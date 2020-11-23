@@ -1,0 +1,77 @@
+## From https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html#eo3-format
+
+# UUID of the dataset
+id: f884df9b-4458-47fd-a9d2-1a52a2db8a1a
+$schema: 'https://schemas.opendatacube.org/dataset'
+
+# Product name
+product:
+  name: landsat8_example_product
+
+# Native CRS, assumed to be the same across all bands
+crs: "epsg:32660"
+
+# Optional GeoJSON object in the units of native CRS.
+# Defines a polygon such that, all valid pixels across all bands
+# are inside this polygon.
+geometry:
+  type: Polygon
+  coordinates: [[..]]
+
+# Mapping name:str -> { shape:     Tuple[ny: int, nx: int]
+#                       transform: Tuple[float x 9]}
+# Captures image size, and geo-registration
+grids:
+    default:  # "default" grid must be present
+       shape: [7811, 7691]
+       transform: [30, 0, 618285, 0, -30, -1642485, 0, 0, 1]
+    pan:  # Landsat Panchromatic band is higher res image than other bands
+       shape: [15621, 15381]
+       transform: [15, 0, 618292.5, 0, -15, -1642492.5, 0, 0, 1]
+
+# Per band storage information and references into `grids`
+# Bands using "default" grid should not need to reference it
+measurements:
+   pan:               # Band using non-default "pan" grid
+     grid: "pan"      # should match the name used in `grids` mapping above
+     path: "pan.tif"
+   red:               # Band using "default" grid should omit `grid` key
+     path: red.tif    # Path relative to the dataset location
+   blue:
+     path: blue.tif
+   multiband_example:
+     path: multi_band.tif
+     band: 2          # int: 1-based index into multi-band file
+   netcdf_example:    # just example, mixing TIFF and netcdf in one product is not recommended
+     path: some.nc
+     layer: some_var  # str: netcdf variable to read
+
+# optional dataset location (useful for public datasets)
+location: https://landsatonaws.com/L8/099/072/LC08_L1GT_099072_20200523_20200523_01_RT/metadata.yaml
+
+# Dataset properties, prefer STAC standard names here
+# Timestamp is the only compulsory field here
+properties:
+  eo:platform: landsat-8
+  eo:instrument: OLI_TIRS
+
+  # If it's a single time instance use datetime
+  datetime: 2020-01-01T07:02:54.188Z  # Use UTC
+
+  # When recording time range use dtr:{start,end}_datetime
+  dtr:start_datetime: 2020-01-01T07:02:02.233Z
+  dtr:end_datetime:   2020-01-01T07:03:04.397Z
+
+  # ODC specific "extensions"
+  odc:processing_datetime: 2020-02-02T08:10:00.000Z
+
+  odc:file_format: GeoTIFF
+  odc:region_code: "074071"   # provider specific unique identified for the same location
+                              # for Landsat '{:03d}{:03d}'.format(path, row)
+
+  dea:dataset_maturity: final # one of: final| interim| nrt (near real time)
+  odc:product_family: ard     # can be useful for larger installations
+
+# Lineage only references UUIDs of direct source datasets
+# Mapping name:str -> [UUID]
+lineage: {}  # set to empty object if no lineage is defined

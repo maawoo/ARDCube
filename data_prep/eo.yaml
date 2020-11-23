@@ -1,0 +1,30 @@
+## From: https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html#eo-deprecated
+
+id: a066a2ab-42f7-4e72-bc6d-a47a558b8172
+creation_dt: '2016-05-04T09:06:54'
+product_type: DEM
+platform: {code: SRTM}
+instrument: {name: SIR}
+format: {name: ENVI}
+extent:
+  coord:
+    ll: {lat: -44.000138890272005, lon: 112.99986111}
+    lr: {lat: -44.000138890272005, lon: 153.99986111032797}
+    ul: {lat: -10.00013889, lon: 112.99986111}
+    ur: {lat: -10.00013889, lon: 153.99986111032797}
+  from_dt: '2000-02-11T17:43:00'
+  center_dt: '2000-02-21T11:54:00'
+  to_dt: '2000-02-22T23:23:00'
+grid_spatial:
+  projection:
+    geo_ref_points:
+      ll: {x: 112.99986111, y: -44.000138890272005}
+      lr: {x: 153.999861110328, y: -44.000138890272005}
+      ul: {x: 112.99986111, y: -10.00013889}
+      ur: {x: 153.999861110328, y: -10.00013889}
+    spatial_reference: GEOGCS["GCS_WGS_1984",DATUM["WGS_1984",SPHEROID["WGS_84",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4326"]]
+image:
+  bands:
+    elevation: {path: dsm1sv1_0_Clean.img}
+lineage:
+  source_datasets: {}
