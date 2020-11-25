@@ -3,9 +3,11 @@ import subprocess
 import os
 import re
 import glob
+import gdal
 import nasa_hls
 
 hls_dir = Path("/home/du23yow/Documents/MA/test_data/HLS/S30")
+#hls_dir = Path("/home/du23yow/Documents/MA/test_data/HLS/L30")
 max_cloud = 100
 
 ## ---------------------------------------------------------------------------------------------------------------------
@@ -29,12 +31,18 @@ for file in glob.iglob(os.path.join(hls_dir, '**/*.tif'), recursive=True):
 
     ## Define new filename
     basename = os.path.basename(file)
-    basename_tmp = basename[:-len(Path(basename).suffix)]
-    basename_new = f"{basename_tmp}_25832.tif"
+    basename_new = f"{basename[:-len(Path(basename).suffix)]}_25832.tif"
+
+    ## Get tile and date
+    tile = basename[9:14]
+
+    file_open = gdal.Open(file)
+    file_meta = file_open.GetMetadata()
+    file_date = file_meta['SENSING_TIME']
+    date = file_date[:10].replace('-', '')
+    file_open = None  # Close dataset
 
     ## Define new directory (and create it, if it doesn't exist already)
-    tile = basename[9:14]  # Neither HLS nor Sentinel naming conventions will change any time soon, ...
-    date = basename[15:22]  # ...so I guess this is reasonably safe
     dir_new = os.path.join(hls_dir, tile, date)
     if not os.path.exists(dir_new):
         os.makedirs(dir_new)
