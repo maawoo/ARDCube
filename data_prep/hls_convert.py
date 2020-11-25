@@ -3,7 +3,7 @@ import subprocess
 import os
 import re
 import glob
-import gdal
+import datetime
 import nasa_hls
 
 hls_dir = Path("/home/du23yow/Documents/MA/test_data/HLS/S30")
@@ -34,13 +34,12 @@ for file in glob.iglob(os.path.join(hls_dir, '**/*.tif'), recursive=True):
     basename_new = f"{basename[:-len(Path(basename).suffix)]}_25832.tif"
 
     ## Get tile and date
-    tile = basename[9:14]
+    re_tile = re.search(r'.T\w{5}.', basename)
+    tile = basename[re_tile.regs[0][0]+2:re_tile.regs[0][1]-1]
 
-    file_open = gdal.Open(file)
-    file_meta = file_open.GetMetadata()
-    file_date = file_meta['SENSING_TIME']
-    date = file_date[:10].replace('-', '')
-    file_open = None  # Close dataset
+    re_date = re.search(r'.\d{7}.', basename)
+    yeardoy = basename[re_date.regs[0][0]+1:re_date.regs[0][1]-1]
+    date = datetime.datetime.strptime(yeardoy, '%Y%j').strftime('%Y%m%d')
 
     ## Define new directory (and create it, if it doesn't exist already)
     dir_new = os.path.join(hls_dir, tile, date)
