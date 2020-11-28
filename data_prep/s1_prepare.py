@@ -3,6 +3,7 @@ import subprocess
 import os
 import re
 import uuid
+import yaml
 import rasterio
 
 
@@ -155,7 +156,7 @@ def create_eo3_yaml(file_dict_entry, product_name, crs):
     shape, transform = get_grid_info(file_dict_entry)
     meta = get_metadata(file_dict_entry)
 
-    yaml = {
+    yaml_content = {
         'id': str(uuid.uuid4()),
         '$schema': 'https://schemas.opendatacube.org/dataset',
         'product': {'name': product_name},
@@ -168,7 +169,11 @@ def create_eo3_yaml(file_dict_entry, product_name, crs):
         'properties': meta
     }
 
-    ## Just create the yaml-files and don't return anything
+    yaml_dir = os.path.dirname(file_dict_entry[0])
+    yaml_name = f'{os.path.basename(file_dict_entry[0])[:27]}.yaml'
+
+    with open(os.path.join(yaml_dir, yaml_name), 'w') as stream:
+        yaml.dump(yaml_content, stream, sort_keys=False)
 
 
 def main(file_dir, product_name, crs):
