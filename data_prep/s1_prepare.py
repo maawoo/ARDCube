@@ -2,6 +2,7 @@ from pathlib import Path
 import subprocess
 import os
 import re
+import uuid
 import rasterio
 
 
@@ -69,6 +70,9 @@ def s1_convert(file_list):
 
 
 def get_vv_vh_file(file_dict_entry):
+    """
+    Using regex here instead of the index of file_dict_entry to avoid wrong variable bindings!
+    """
 
     r_vh = re.compile('.*_VH_')
     r_vv = re.compile('.*_VV_')
@@ -96,20 +100,75 @@ def get_grid_info(file_dict_entry):
                          f"{os.path.basename(file_dict_entry[1])} were expected to be identical!")
 
 
+def get_metadata(file_dict_entry):
+    """
+    Extracting metadata that is common to both files in the dictionary entry, so extraction based on only one of the
+    files should be okay.
+
+    ODC currently uses the EO3 format for the YAML files, which is supposed to be an intermediate format before moving
+    on to STAC. The 'properties' section in the YAML, which is filled with the dictionary created in this function,
+    already uses STAC standard names. For more information see:
+    https://github.com/radiantearth/stac-spec/blob/master/item-spec/common-metadata.md
+    https://github.com/radiantearth/stac-spec/tree/master/extensions/sar (other extensions in parent directory!)
+    """
+
+    dict_out = {}
+    filename = os.path.basename(file_dict_entry[0])
+
+    dict_out['eo:platform'] = f'Sentinel-1{filename[2:3]}'
+    dict_out['eo:instrument'] = 'c-sar'
+
+    date = filename[12:27]
+    date_new = f'{date[0:4]}-{date[4:6]}-{date[6:8]}T' \
+               f'{date[9:11]}:{date[11:13]}:{date[13:]}.000Z'  # ...there's probably a more elegant way?
+    dict_out['datetime'] = f'datetime:{date_new}'
+
+    dict_out['odc:file_format'] = 'GeoTIFF'
+
+    dict_out['sar:instrument_mode'] = filename[5:7]
+    dict_out['sar:frequency_band'] = 'C'
+    dict_out['sar:polarizations'] = ['VH', 'VV']
+    dict_out['sar:product_type'] = 'GRD'
+
+    if filename[10:11] == 'A':
+        dict_out['sat:orbit_state'] = 'ascending'
+    elif filename[10:11] == 'D':
+        dict_out['sat:orbit_state'] = 'descending'
+    else:
+        dict_out['sat:orbit_state'] = None
+        print(f'Based on the naming convention of pyroSAR, either the character \'A\' (ascending) or \'D\' (descending)'
+              f' was expected for index [10:11]. The actual character is {filename[10:11]}. '
+              f'\'sat:orbit_state\' will be set to \'None\'. Please check file naming of the current dataset!')
+
+    ## Any other metadata that would be useful to search for?
+    ## Check pyroSAR naming convention somehow before or after? Or not?
+
+    return dict_out
+
+
 def create_eo3_yaml(file_dict_entry, product_name, crs):
     """
     file_dict_entry -> ["full_path_to_vv_file", "full_path_to_vh_file"]
     """
 
-    product_name = product_name
-    crs = crs
-
     path_vh, path_vv = get_vv_vh_file(file_dict_entry)
     shape, transform = get_grid_info(file_dict_entry)
+    meta = get_metadata(file_dict_entry)
 
-    # ...
+    yaml = {
+        'id': str(uuid.uuid4()),
+        '$schema': 'https://schemas.opendatacube.org/dataset',
+        'product': {'name': product_name},
+        'crs': crs,
+        'grids': {'default': {'shape': shape, 'transform': transform}
+                  },
+        'measurements': {'VH': {'path': path_vh},
+                         'VV': {'path': path_vv}
+                         },
+        'properties': meta
+    }
 
-    #Just creates the yaml-files and doesn't return anything
+    ## Just create the yaml-files and don't return anything
 
 
 def main(file_dir, product_name, crs):
