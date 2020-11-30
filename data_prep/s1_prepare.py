@@ -2,6 +2,7 @@ from pathlib import Path
 import subprocess
 import os
 import re
+import glob
 import uuid
 import yaml
 import rasterio
@@ -14,38 +15,10 @@ crs = '25832'
 ## ---------------------------------------------------------------------------------------------------------------------
 
 
-def create_file_list(file_dir):
+def s1_convert(file_dir):
 
-    return [os.path.join(file_dir, f) for f in os.listdir(file_dir) if
-            re.search(r'.*\.tif', f)]
-
-
-def create_file_dict(file_list):
-
-    dict_out = {}
-    for file in file_list:
-
-        file_base = os.path.basename(file)
-
-        ## Extract entire date string from filename (needed to identify related files (VV/VH)!)
-        rs = re.search(r'_\d{8}T\d{6}_', file_base)
-        date = file_base[rs.regs[0][0]+1:rs.regs[0][1]-1]
-
-        dict_keys = list(dict_out.keys())
-        if date not in dict_keys:
-            dict_out[date] = [file]
-        else:
-            dict_out[date].append(file)
-
-    for key in dict_out:
-        if len(dict_out[key]) > 2:
-            raise ValueError(f'For each dictionary key a list of two entries (VV & VH) is expected. '
-                             f'The key \'{key}\' contains a list of {len(dict_out[key])} entries. Please check!')
-
-    return dict_out
-
-
-def s1_convert(file_list):
+    file_list = [os.path.join(file_dir, f) for f in os.listdir(file_dir) if
+                 re.search(r'.*\.tif', f)]
 
     for file in file_list:
 
@@ -68,6 +41,31 @@ def s1_convert(file_list):
         ## Execute gdalwarp
         subprocess.call(f'gdalwarp -t_srs EPSG:25832 -co TILED=YES -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 '
                         f'{file} {file_out}', shell=True)
+
+
+def create_file_dict(file_dir):
+
+    dict_out = {}
+    for file in glob.iglob(os.path.join(file_dir, '**/*.tif'), recursive=True):
+
+        file_base = os.path.basename(file)
+
+        ## Extract entire date string from filename (needed to identify related files (VV/VH)!)
+        rs = re.search(r'_\d{8}T\d{6}_', file_base)
+        date = file_base[rs.regs[0][0]+1:rs.regs[0][1]-1]
+
+        dict_keys = list(dict_out.keys())
+        if date not in dict_keys:
+            dict_out[date] = [file]
+        else:
+            dict_out[date].append(file)
+
+    for key in dict_out:
+        if len(dict_out[key]) > 2:
+            raise ValueError(f'For each dictionary key a list of two entries (VV & VH) is expected. '
+                             f'The key \'{key}\' contains a list of {len(dict_out[key])} entries. Please check!')
+
+    return dict_out
 
 
 def get_vv_vh_file(file_dict_entry):
@@ -178,12 +176,11 @@ def create_eo3_yaml(file_dict_entry, product_name, crs):
 
 def main(file_dir, product_name, crs):
 
-    ## Create list & dict from files in the directory
-    file_list = create_file_list(file_dir)
-    file_dict = create_file_dict(file_list)
-
     ## Convert all files that are listed in file_list
-    s1_convert(file_list)
+    #s1_convert(file_dir)
+
+    ## Create list & dict from files in the directory
+    file_dict = create_file_dict(file_dir)
 
     ## Create metadata YAMLs in EO3 format
     for key in list(file_dict.keys()):
@@ -191,9 +188,15 @@ def main(file_dir, product_name, crs):
 
     ## Anything else??
 
+    return file_dict
+
+
+
+f_dict = main(s1_dir, product_name, crs)
+
 
 #############
 ## TEST AREA
 
-test_file1 = "/home/du23yow/Documents/MA/test_data/S1/20200602/S1A__IW___A_20200602T170001_VH_grd_mli_norm_geo_db_25832.tif"
-test_file2 = "/home/du23yow/Documents/MA/test_data/S1/20200602/S1A__IW___A_20200602T170001_VV_grd_mli_norm_geo_db_25832.tif"
+#test_file1 = "/home/du23yow/Documents/MA/test_data/S1/20200602/S1A__IW___A_20200602T170001_VH_grd_mli_norm_geo_db_25832.tif"
+#test_file2 = "/home/du23yow/Documents/MA/test_data/S1/20200602/S1A__IW___A_20200602T170001_VV_grd_mli_norm_geo_db_25832.tif"
