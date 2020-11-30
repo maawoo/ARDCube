@@ -87,8 +87,8 @@ def get_grid_info(file_dict_entry):
     src1 = rasterio.open(file_dict_entry[0])
     src2 = rasterio.open(file_dict_entry[1])
 
-    shape1 = src1.shape
-    shape2 = src2.shape
+    shape1 = list(src1.shape)
+    shape2 = list(src2.shape)
     transform1 = list(src1.transform)
     transform2 = list(src2.transform)
 
@@ -118,9 +118,8 @@ def get_metadata(file_dict_entry):
     dict_out['eo:instrument'] = 'c-sar'
 
     date = filename[12:27]
-    date_new = f'{date[0:4]}-{date[4:6]}-{date[6:8]}T' \
-               f'{date[9:11]}:{date[11:13]}:{date[13:]}.000Z'  # ...there's probably a more elegant way?
-    dict_out['datetime'] = f'datetime:{date_new}'
+    dict_out['datetime'] = f'{date[0:4]}-{date[4:6]}-{date[6:8]}T{date[9:11]}:{date[11:13]}:{date[13:]}.000Z'
+    # ...there's probably a more elegant way?
 
     dict_out['odc:file_format'] = 'GeoTIFF'
 
@@ -158,7 +157,7 @@ def create_eo3_yaml(file_dict_entry, product_name, crs):
         'id': str(uuid.uuid4()),
         '$schema': 'https://schemas.opendatacube.org/dataset',
         'product': {'name': product_name},
-        'crs': crs,
+        'crs': f"epsg:{crs}",
         'grids': {'default': {'shape': shape, 'transform': transform}
                   },
         'measurements': {'VH': {'path': path_vh},
@@ -171,7 +170,7 @@ def create_eo3_yaml(file_dict_entry, product_name, crs):
     yaml_name = f'{os.path.basename(file_dict_entry[0])[:27]}.yaml'
 
     with open(os.path.join(yaml_dir, yaml_name), 'w') as stream:
-        yaml.dump(yaml_content, stream, sort_keys=False)
+        yaml.safe_dump(yaml_content, stream, sort_keys=False)
 
 
 def main(file_dir, product_name, crs):
