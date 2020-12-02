@@ -8,8 +8,8 @@ import yaml
 import rasterio
 
 
-s1_dir = Path("/home/du23yow/Documents/MA/test_data/S1/")
-product_name = 's1_test_product'
+s1_dir = Path("/run/user/1000/gvfs/sftp:host=geo01.rz.uni-jena.de/home/du23yow/MA/S1_Test")
+product_name = 's1_test_product_terrasense'
 crs = '25832'
 
 ## ---------------------------------------------------------------------------------------------------------------------
@@ -99,8 +99,10 @@ def get_grid_info(file_dict_entry):
                          f"{os.path.basename(file_dict_entry[1])} were expected to be identical!")
 
 
-def get_metadata(file_dict_entry):
+def get_metadata(file_dict_entry, file_dict_key):
     """
+    file_dict_entry -> ["full_path_to_vv_file", "full_path_to_vh_file"]
+
     Extracting metadata that is common to both files in the dictionary entry, so extraction based on only one of the
     files should be okay.
 
@@ -117,7 +119,7 @@ def get_metadata(file_dict_entry):
     dict_out['eo:platform'] = f'Sentinel-1{filename[2:3]}'
     dict_out['eo:instrument'] = 'c-sar'
 
-    date = filename[12:27]
+    date = file_dict_key
     dict_out['datetime'] = f'{date[0:4]}-{date[4:6]}-{date[6:8]}T{date[9:11]}:{date[11:13]}:{date[13:]}.000Z'
     # ...there's probably a more elegant way?
 
@@ -144,46 +146,44 @@ def get_metadata(file_dict_entry):
     return dict_out
 
 
-def create_eo3_yaml(file_dict_entry, product_name, crs):
-    """
-    file_dict_entry -> ["full_path_to_vv_file", "full_path_to_vh_file"]
-    """
+def create_eo3_yaml(file_dict, product_name, crs):
 
-    path_vh, path_vv = get_vv_vh_file(file_dict_entry)
-    shape, transform = get_grid_info(file_dict_entry)
-    meta = get_metadata(file_dict_entry)
+    for key in list(file_dict.keys()):
 
-    yaml_content = {
-        'id': str(uuid.uuid4()),
-        '$schema': 'https://schemas.opendatacube.org/dataset',
-        'product': {'name': product_name},
-        'crs': f"epsg:{crs}",
-        'grids': {'default': {'shape': shape, 'transform': transform}
-                  },
-        'measurements': {'VH': {'path': path_vh},
-                         'VV': {'path': path_vv}
-                         },
-        'properties': meta
-    }
+        path_vh, path_vv = get_vv_vh_file(file_dict[key])
+        shape, transform = get_grid_info(file_dict[key])
+        meta = get_metadata(file_dict[key], key)
 
-    yaml_dir = os.path.dirname(file_dict_entry[0])
-    yaml_name = f'{os.path.basename(file_dict_entry[0])[:27]}.yaml'
+        yaml_content = {
+            'id': str(uuid.uuid4()),
+            '$schema': 'https://schemas.opendatacube.org/dataset',
+            'product': {'name': product_name},
+            'crs': f"epsg:{crs}",
+            'grids': {'default': {'shape': shape, 'transform': transform}
+                      },
+            'measurements': {'VH': {'path': path_vh},
+                             'VV': {'path': path_vv}
+                             },
+            'properties': meta
+        }
 
-    with open(os.path.join(yaml_dir, yaml_name), 'w') as stream:
-        yaml.safe_dump(yaml_content, stream, sort_keys=False)
+        yaml_dir = os.path.dirname(file_dict[key][0])
+        yaml_name = f'{os.path.basename(file_dict[key][0])[:27]}.yaml'
+
+        with open(os.path.join(yaml_dir, yaml_name), 'w') as stream:
+            yaml.safe_dump(yaml_content, stream, sort_keys=False)
 
 
 def main(file_dir, product_name, crs):
 
     ## Convert all files that are listed in file_list
-    #s1_convert(file_dir)
+    s1_convert(file_dir)
 
     ## Create list & dict from files in the directory
     file_dict = create_file_dict(file_dir)
 
     ## Create metadata YAMLs in EO3 format
-    for key in list(file_dict.keys()):
-        create_eo3_yaml(file_dict[key], product_name, crs)
+    create_eo3_yaml(file_dict, product_name, crs)
 
     ## Anything else??
 
