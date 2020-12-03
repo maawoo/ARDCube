@@ -1,16 +1,17 @@
 from pathlib import Path
-import subprocess
 import os
 import re
 import glob
 import uuid
+from progress.bar import Bar
 import yaml
 import rasterio
+from osgeo import gdal
 
-
-s1_dir = Path("/run/user/1000/gvfs/sftp:host=geo01.rz.uni-jena.de/home/du23yow/MA/S1_Test")
+s1_dir = Path("/home/du23yow/MA/S1_Test")
 product_name = 's1_test_product_terrasense'
 crs = '25832'
+cleanup = True
 
 ## ---------------------------------------------------------------------------------------------------------------------
 
@@ -20,15 +21,16 @@ def s1_convert(file_dir):
     file_list = [os.path.join(file_dir, f) for f in os.listdir(file_dir) if
                  re.search(r'.*\.tif', f)]
 
-    for file in file_list:
+    bar = Bar('Processing', max=len(file_list))
+    for f in file_list:
 
         ## Define new filename
-        basename = os.path.basename(file)
+        basename = os.path.basename(f)
         basename_new = f"{basename[:-len(Path(basename).suffix)]}_25832.tif"
 
         ## Search and extract date from filename
-        rs = re.search(r'\d{8}T', file)
-        date = file[rs.regs[0][0]:rs.regs[0][1]-1]
+        rs = re.search(r'\d{8}T', f)
+        date = f[rs.regs[0][0]:rs.regs[0][1]-1]
 
         ## Define new directory (and create it, if it doesn't exist already)
         dir_new = os.path.join(s1_dir, date)
@@ -36,29 +38,38 @@ def s1_convert(file_dir):
             os.makedirs(dir_new)
 
         ## Complete output path
-        file_out = os.path.join(dir_new, basename_new)
+        f_out = os.path.join(dir_new, basename_new)
 
         ## Execute gdalwarp
-        subprocess.call(f'gdalwarp -t_srs EPSG:25832 -co TILED=YES -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 '
-                        f'{file} {file_out}', shell=True)
+        warp_options = gdal.WarpOptions(dstSRS='EPSG:25832', options='-co TILED=YES -co BLOCKXSIZE=512 '
+                                                                     '-co BLOCKYSIZE=512')
+        ds = gdal.Warp(f_out, f, options=warp_options)
+        ds = None
+
+        if cleanup:
+            ## Remove original file
+            os.remove(f)
+
+        bar.next()
+    bar.finish()
 
 
 def create_file_dict(file_dir):
 
     dict_out = {}
-    for file in glob.iglob(os.path.join(file_dir, '**/*.tif'), recursive=True):
+    for f in glob.iglob(os.path.join(file_dir, '**/*.tif'), recursive=True):
 
-        file_base = os.path.basename(file)
+        f_base = os.path.basename(f)
 
         ## Extract entire date string from filename (needed to identify related files (VV/VH)!)
-        rs = re.search(r'_\d{8}T\d{6}_', file_base)
-        date = file_base[rs.regs[0][0]+1:rs.regs[0][1]-1]
+        rs = re.search(r'_\d{8}T\d{6}_', f_base)
+        date = f_base[rs.regs[0][0]+1:rs.regs[0][1]-1]
 
         dict_keys = list(dict_out.keys())
         if date not in dict_keys:
-            dict_out[date] = [file]
+            dict_out[date] = [f]
         else:
-            dict_out[date].append(file)
+            dict_out[date].append(f)
 
     for key in dict_out:
         if len(dict_out[key]) > 2:
@@ -76,8 +87,10 @@ def get_vv_vh_file(file_dict_entry):
     r_vh = re.compile('.*_VH_')
     r_vv = re.compile('.*_VV_')
 
-    vh = list(filter(r_vh.match, file_dict_entry))[0]
-    vv = list(filter(r_vv.match, file_dict_entry))[0]
+    vh = os.path.join("/run/user/1000/gvfs/sftp:host=geo01.rz.uni-jena.de",
+                      list(filter(r_vh.match, file_dict_entry))[0])
+    vv = os.path.join("/run/user/1000/gvfs/sftp:host=geo01.rz.uni-jena.de",
+                      list(filter(r_vv.match, file_dict_entry))[0])
 
     return vh, vv
 
@@ -188,7 +201,6 @@ def main(file_dir, product_name, crs):
     ## Anything else??
 
     return file_dict
-
 
 
 f_dict = main(s1_dir, product_name, crs)
