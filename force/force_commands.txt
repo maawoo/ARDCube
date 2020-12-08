@@ -1,0 +1,29 @@
+
+#### Download metadata catalogues from Google Cloud Storage 
+sudo docker run -v /media/du23yow/WD500/force_data/meta_catalogues:/data/meta fegyi001/force force-level1-csd -u /data/meta
+
+#### Test download query (-n = dry run)
+sudo docker run -v /media/du23yow/WD500/force_data:/data fegyi001/force force-level1-csd -n -c 0,80 -d 20190601,20190630 -s S2A,S2B /data/meta_catalogues /data/level-1-pool queue /data/TH_shape_4326.gpkg
+
+##########################################
+#### Download Level 1 data
+
+## Landsat 8
+sudo docker run -v /media/du23yow/WD500/force_data/:/data fegyi001/force force-level1-csd -k -c 0,80 -d 20190601,20190630 -s LC08 /data/meta_catalogues /data/level-1-pool queue /data/TH_shape_4326.gpkg
+
+## Sentinel-2
+
+sudo docker run -v /media/du23yow/WD500/force_data/:/data -v /home/du23yow/force_credentials:/credentials --env FORCE_CREDENTIALS=/credentials fegyi001/force force-level1-sentinel2 /data/level-1-pool/S2 queue "10.38/51.24,11.69/51.24,11.69/50.47,10.38/50.47,10.38/51.24" 2019-06-01 2019-06-30 0 50 dry 
+(Funktioniert, allerdings Fehlermeldung dass Quota überschritten wurde)
+
+sudo docker run --env FORCE_CREDENTIALS=/app/credentials -v /home/du23yow/force_credentials:/app/credentials fegyi001/force env | grep FORCE_CREDENTIALS
+
+sudo docker run -it -v /media/du23yow/WD500/force_data/:/data -v /home/du23yow/force_credentials:/credentials --env BOTO_CONFIG=/credentials/.boto fegyi001/force force-level1-csd -k -c 0,50 -d 20190601,20190630 -s S2A,S2B /data/meta_catalogues /data/level-1-pool/S2 queue /data/TH_shape_4326.gpkg
+
+##########################################
+#### Generate Level 2 ARD
+
+## Create empty parameter file
+sudo docker run -v /media/du23yow/WD5001/force_data/:/data fegyi001/force force-parameter /data/param LEVEL2 1
+
+##
