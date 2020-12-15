@@ -1,31 +1,35 @@
 
-#### Download metadata catalogues from Google Cloud Storage 
-sudo docker run -v /media/du23yow/WD5001/force_data/meta_catalogues:/data/meta fegyi001/force force-level1-csd -u /data/meta
-
-
-#### Just a test bro (-n = dry run)
-sudo docker run -v /media/du23yow/WD5001/force_data:/data fegyi001/force force-level1-csd -n -c 0,80 -d 20190601,20190630 -s S2A,S2B /data/meta_catalogues /data/level-1-pool queue /data/TH_shape_4326.gpkg
-
+fegyi001/force
+myforce2
 
 ##########################################
 #### Download Level 1 data
 
 
-## Landsat 8
+#### Download metadata catalogues from Google Cloud Storage 
+sudo docker run -v /media/du23yow/WD5001/force_data/meta_catalogues:/data/meta myforce2 force-level1-csd -u /data/meta
+
+
+## Landsat 8  - force-level1-csd
 sudo docker run -v /media/du23yow/WD5001/force_data/:/data myforce2 force-level1-csd -k -c 0,50 -d 20190601,20190630 -s LC08 /data/meta_catalogues /data/level-1/L8 /data/level-1/l8_queue.txt /data/misc/TH_shape_4326.gpkg
 
 
-## Sentinel-2
+## Sentinel-2 - force-level1-csd
 sudo docker run -v /media/du23yow/WD5001/force_data:/data -v /home/du23yow:/credentials --env BOTO_CONFIG=/credentials/.boto myforce2 force-level1-csd -k -c 0,50 -d 20190601,20190630 -s S2A,S2B /data/meta_catalogues /data/level-1/S2 /data/level-1/S2/s2_queue.txt /data/misc/TH_shape_4326.gpkg
 
+(-n = dry run)
 
 ##########################################
 #### Generate Level 2 ARD
 
 
 ## Create empty parameter file
-sudo docker run -v /media/du23yow/WD5001/force_data/:/data fegyi001/force force-parameter /data/param LEVEL2 1
+sudo docker run -v /media/du23yow/WD5001/force_data/:/data myforce2 force-parameter /data/param LEVEL2 1
 
 
 ##
+sudo docker run -v /media/du23yow/WD5001/force_data/:/data myforce2 force-l2ps /data/level-1/L8 /data/param/L8_level2_parameters.prm
+
+sudo docker run -v /media/du23yow/WD5001/force_data/:/data myforce2 force-level2 /data/param/L8_level2_parameters.prm
+
 
