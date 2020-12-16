@@ -1,0 +1,28 @@
+name: s1_test_product
+description: Sentinel-1 test product
+metadata_type: eo3
+
+metadata:
+  product:
+    name: s1_test_product
+  # Alternatively, include specific items to match
+  # properties:
+      # eo:instrument: OLI_TIRS
+      # eo:platform: landsat-8
+
+measurements:
+- name: 'VH'
+  dtype: float32
+  nodata: -99
+  units: 'dB - gamma0'
+- name: 'VV'
+  dtype: float32
+  nodata: -99
+  units: 'dB - gamma0'
+      
+storage:
+  crs: EPSG:25832
+  resolution:
+    x: 20.00000000004819
+    y: -20.00000000004819
+
