@@ -8,20 +8,20 @@ logging.basicConfig(filename='test.log', filemode='a', format='%(message)s', lev
 # logging.basicConfig(format='%(message)s', level='INFO')
 
 maindir = '/home/marco/pypypy/00_data/pyro_test'
+s1_dir = os.path.join(maindir, 'S1')
 aoi = os.path.join(maindir, 'misc', 'jena.geojson')
 
 api = SentinelAPI('maawoo', '2ZSuBPsU8YQkzUsDz6c3pS8nMn', 'https://scihub.copernicus.eu/apihub/')
 footprint = geojson_to_wkt(read_geojson(aoi))
 products = api.query(footprint,
-                     date=('20200101', '20200105'),
+                     date=('20200601', '20200701'),
                      platformname='Sentinel-1',
                      producttype='GRD')
 
-size = api.get_products_size(products)
+print(f"Total size of queried products: {api.get_products_size(products)} GB")
 
-api.download_all(products)
-api.download(id=list(products.keys())[0])
-
+# api.download(id=list(products.keys())[0])  # Download single product based on index
+api.download_all(products, directory_path=s1_dir)  # Download all queried products
 
 """
 ## Export footprints and metadata of queried products as GeoJSON
