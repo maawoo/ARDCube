@@ -1,2 +1,0 @@
-sudo docker container prune (remove all stopped containers)
-sudo docker images | grep none | awk '{print $3;}' | sudo xargs docker rmi (remove all intermediate <none> images)

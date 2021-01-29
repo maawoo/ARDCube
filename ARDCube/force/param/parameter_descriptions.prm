@@ -179,6 +179,12 @@ DIR_AOD  = NULL
 
 # CLOUD DETECTION OPTIONS
 # ------------------------------------------------------------------------
+# If this parameter is enabled, confident cloud detections will be erased in the 
+# reflectance product, i.e. pixels are set to nodata. The cloud flag in the QAI 
+# product will still mark these pixels as clouds. Use this option is disk space 
+# is of concern.
+# Type: Logical. Valid values: {TRUE,FALSE}
+ERASE_CLOUDS = FALSE
 # This parameter cancels the processing of images that exceed the given
 # threshold. The processing will be canceled after cloud detection.
 # Type: Integer. Valid range: ]0,100]
@@ -187,6 +193,11 @@ MAX_CLOUD_COVER_FRAME = 75
 # (tiled image) that exceed the given threshold.
 # Type: Integer. Valid range: ]0,100]
 MAX_CLOUD_COVER_TILE  = 75
+# Buffer sizes (radius in meters) for cloud, cloud shadow and snow masks.
+# Type: Float. Valid range: [0,10000]
+CLOUD_BUFFER  = 300
+SHADOW_BUFFER = 90
+SNOW_BUFFER   = 30
 # These are the main thresholds of the Fmask algorithm.
 # Type: Float. Valid range: [0,1]
 CLOUD_THRESHOLD  = 0.225

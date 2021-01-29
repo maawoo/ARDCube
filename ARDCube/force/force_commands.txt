@@ -1,35 +1,34 @@
 
-fegyi001/force
-myforce2
-
 ##########################################
 #### Download Level 1 data
 
+- Wegen schnellerer Internetverbindung lieber auf Uni-Rechner!
+- Probleme beim Download von Sentinel-2 Szenen, da die Zeichenkodierung im Docker Container komischerweise Probleme mit
+gsutil verursacht hat (oder so). Lösung war zwischenzeitlich die einen zusätzlichen Befehl in die Dockerfile hinzuzufügen
+und dann einen local build zu erstellen. Ist aber umständlich und das mit dem local build hat beim letzten Versuch auch
+nicht geklappt... also einfach per sentinelsat downloaden!
 
 #### Download metadata catalogues from Google Cloud Storage 
-sudo docker run -v /media/du23yow/WD5001/force_data/meta_catalogues:/data/meta myforce2 force-level1-csd -u /data/meta
+sudo docker run -v /home/marco/pypypy/00_data/force/meta:/data/meta davidfrantz/force force-level1-csd -u /data/meta
 
+## Download Landsat 8
+sudo docker run -v /home/marco/pypypy/00_data/force:/data davidfrantz/force force-level1-csd -k -c 0,80 -d 20200601,20200701
+-s LC08 /data/meta /data/level-1/L8 /data/level-1/L8/l8_queue.txt /data/misc/th_stripe.gpkg
 
-## Landsat 8  - force-level1-csd
-sudo docker run -v /media/du23yow/WD5001/force_data/:/data myforce2 force-level1-csd -k -c 0,50 -d 20190601,20190630 -s LC08 /data/meta_catalogues /data/level-1/L8 /data/level-1/l8_queue.txt /data/misc/TH_shape_4326.gpkg
-
-
-## Sentinel-2 - force-level1-csd
-sudo docker run -v /media/du23yow/WD5001/force_data:/data -v /home/du23yow:/credentials --env BOTO_CONFIG=/credentials/.boto myforce2 force-level1-csd -k -c 0,50 -d 20190601,20190630 -s S2A,S2B /data/meta_catalogues /data/level-1/S2 /data/level-1/S2/s2_queue.txt /data/misc/TH_shape_4326.gpkg
+## Download Sentinel-2
+sudo docker run -v /home/marco/pypypy/00_data/force:/data -v /home/marco:/credentials --env BOTO_CONFIG=/credentials/.boto
+davidfrantz/force force-level1-csd -k -c 0,80 -d 20200601,20200701 -s S2A,S2B /data/meta /data/level-1/S2 /data/level-1/S2/s2_queue.txt
+/data/misc/th_stripe.gpkg
 
 (-n = dry run)
 
 ##########################################
 #### Generate Level 2 ARD
 
-
 ## Create empty parameter file
-sudo docker run -v /media/du23yow/WD5001/force_data/:/data myforce2 force-parameter /data/param LEVEL2 1
+sudo docker run -v /home/marco/pypypy/00_data/force:/data davidfrantz/force force-parameter /data/param LEVEL2 0
 
-
-##
-sudo docker run -v /media/du23yow/WD5001/force_data/:/data myforce2 force-l2ps /data/level-1/L8 /data/param/L8_level2_parameters.prm
-
-sudo docker run -v /media/du23yow/WD5001/force_data/:/data myforce2 force-level2 /data/param/L8_level2_parameters.prm
+## Start process
+sudo docker run -v /home/marco/pypypy/00_data/force:/data davidfrantz/force force-level2 /data/param/L8_level2_parameters.prm
 
 

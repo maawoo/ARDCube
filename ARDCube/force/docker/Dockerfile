@@ -31,7 +31,7 @@ RUN mkdir -p $INSTALL_DIR
 # Refresh package list & upgrade existing packages 
 RUN apt-get -y update && apt-get -y upgrade  
 
-# Set locale
+# Set locale (Marco)
 ENV LC_ALL=C.UTF-8
 
 # Add PPA for Python 3.x
@@ -39,7 +39,7 @@ RUN apt -y install software-properties-common
 RUN add-apt-repository -y ppa:deadsnakes/ppa
 
 # Install libraries
-RUN apt-get -y install wget unzip curl git build-essential libgdal-dev gdal-bin python-gdal \ 
+RUN apt-get -y install wget unzip curl git build-essential libgdal-dev gdal-bin python-gdal \
   libarmadillo-dev libfltk1.3-dev libgsl0-dev lockfile-progs rename \
   parallel libfltk1.3-dev apt-utils cmake \
   libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev \
@@ -47,7 +47,8 @@ RUN apt-get -y install wget unzip curl git build-essential libgdal-dev gdal-bin 
 
 # Set python aliases for Python 3.x
 RUN echo 'alias python=python3' >> ~/.bashrc \
-  && echo 'alias pip=pip3' >> ~/.bashrc
+  && echo 'alias pip=pip3' >> ~/.bashrc \
+  && . ~/.bashrc
 # NumPy is needed for OpenCV, gsutil for Google downloads
 RUN pip3 install numpy==1.18.1 gsutil
 
@@ -80,9 +81,9 @@ RUN mkdir -p $INSTALL_DIR/force && \
   # This is needed in case of develop branch
   mkdir -p /develop
 WORKDIR $INSTALL_DIR/force
-COPY . . 
-ARG splits=true 
-ARG debug=false 
+COPY . .
+ARG splits=true
+ARG debug=false
 # Conditionally disable SPLITS which is enabled by default
 RUN if [ "$splits" = "false" ] ; then ./splits.sh disable; else ./splits.sh enable; fi && \
   # Conditionally enable DEBUG mode
