@@ -15,6 +15,7 @@ s2_dir = os.path.join(maindir, 'S2')
 aoi = os.path.join(maindir, 'misc', 'th_stripe.geojson')
 timespan = ('20200601', '20200606')
 s1_producttype = 'GRD'
+s2_producttype = 'S2MSI1C'
 s2_cloudcover = (0, 80)  # min, max (percentage)
 
 #############################################################
@@ -23,7 +24,7 @@ api = SentinelAPI('maawoo', '2ZSuBPsU8YQkzUsDz6c3pS8nMn', 'https://scihub.copern
 footprint = geojson_to_wkt(read_geojson(aoi))
 
 products_s1 = api.query(footprint, date=timespan, platformname='Sentinel-1', producttype=s1_producttype)
-products_s2 = api.query(footprint, date=timespan, platformname='Sentinel-2', cloudcoverpercentage=s2_cloudcover)
+products_s2 = api.query(footprint, date=timespan, platformname='Sentinel-2', producttype=s2_producttype,  cloudcoverpercentage=s2_cloudcover)
 print(f"Sentinel-1: {len(products_s1)} scenes // {api.get_products_size(products_s1)} GB total file size \n"
       f"Sentinel-2: {len(products_s2)} scenes // {api.get_products_size(products_s2)} GB total file size")
 

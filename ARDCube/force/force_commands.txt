@@ -32,3 +32,14 @@ sudo docker run -v /home/marco/pypypy/00_data/force:/data davidfrantz/force forc
 sudo docker run -v /home/marco/pypypy/00_data/force:/data davidfrantz/force force-level2 /data/param/L8_level2_parameters.prm
 
 
+#########################################
+#### Auxillary
+
+## Extract the processing grid as a KML file
+sudo docker run -v /home/marco/pypypy/00_data/force/:/data davidfrantz/force force-tabulate-grid /data/level-2/S2_10/ 51.020666012558095 50.499452103967734 11.4697265625 11.744384765625 kml
+
+## Data cubing of Sentinel-1 data
+for f in *.tif; do sudo docker run -v /home/marco/pypypy/00_data/force/:/data davidfrantz/force force-cube /data/test_s1_cube2/in/$f /data/test_s1_cube2/out cubic 20; done
+
+## Create VRT mosaics
+sudo docker run -v /home/marco/pypypy/00_data/force/:/data davidfrantz/force force-mosaic /data/level-2/L8_30
