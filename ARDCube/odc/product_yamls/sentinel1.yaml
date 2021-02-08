@@ -1,0 +1,27 @@
+name: s1_test_product
+description: Sentinel-1 test product
+metadata_type: eo3
+
+metadata:
+    product:
+        name: s1_test_product
+    properties:
+        eo:platform: [ "sentinel-1a","sentinel-1b" ]
+        eo:constellation: sentinel-1
+
+storage:
+    crs: EPSG:25832
+    resolution:
+        x: 20
+        y: -20
+
+measurements:
+    - name: 'VH'
+      dtype: float32
+      nodata: 0
+      units: 'db - gamma0'
+
+    - name: 'VV'
+      dtype: float32
+      nodata: 0
+      units: 'db - gamma0'
