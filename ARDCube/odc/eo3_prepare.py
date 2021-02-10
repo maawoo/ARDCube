@@ -32,9 +32,9 @@ def read_product(product_path):
     satellite = yaml_dict['metadata']['properties']['eo:constellation']
     crs = yaml_dict['storage']['crs']
     res = yaml_dict['storage']['resolution']['x']
-    n_measurements = len(yaml_dict['measurements'])
+    band_names = [yaml_dict['measurements'][i]['name'] for i in range(len(yaml_dict['measurements']))]
 
-    return {'name': name, 'satellite': satellite, 'crs': crs, 'res': res, 'n_measurements': n_measurements}
+    return {'name': name, 'satellite': satellite, 'crs': crs, 'res': res, 'band_names': band_names}
 
 
 def get_checksums(file_path):
@@ -128,8 +128,40 @@ def get_grid_info(file_dict_entry):
     return shape, transform
 
 
-def get_measurements(file_dict_entry):
-    return None
+def get_measurements(file_dict_entry, multi_band_tif, band_names):
+    """
+    Example output if multi_band_tif is False:
+    {'VH': {'path': vh.tif},
+     'VV': {'path': vv.tif}
+     }
+
+    Example output if multi_band_tif is True:
+    {'blue': {'path': multi_band.tif, 'band': 1},
+     'green': {'path': multi_band.tif, 'band': 2},
+     ...
+    }
+
+    :param file_dict_entry:
+    :param multi_band_tif:
+    :param band_names:
+    :return:
+    """
+
+    measurement_dict = {}
+
+    if multi_band_tif:
+        for band, i in zip(band_names, range(len(band_names))):
+            path = os.path.basename(file_dict_entry[0])
+            measurement_dict[band] = {'path': path, 'band': i+1}
+
+    else:
+        assert len(file_dict_entry) == len(band_names), 'An equal number of file paths as band names is expected!'
+
+        for band, path in zip(band_names, file_dict_entry):
+            path = os.path.basename(path)
+            measurement_dict[band] = {'path': path}
+
+    return measurement_dict
 
 
 def get_metadata(file_dict_entry):
@@ -140,18 +172,23 @@ def create_eo3_yaml(file_dict, product_dict):
 
     product_name = product_dict['name']
     crs = product_dict['crs']
+    band_names = product_dict['band_names']
 
-    ## This index is used in the for-loop to name the generated YAML-files based on the input files.
+    ## The index 'ind_outname' is used in the for-loop to name the generated YAML-files based on the input files.
     ## Both FORCE and pyroSAR use their own naming conventions, so file names should be consistent.
+    ## Also 'multi_band_tif' is set to True or False, depending on SAR or optical imagery. The default for pyroSAR is to
+    ## store VH & VV bands in separate GeoTIFFs, whereas FORCE stores multiple bands in a single GeoTIFF file.
     if product_dict['satellite'] == 'sentinel-1':
-        ind_out_name = 27
+        ind_outname = 27
+        multi_band_tif = False
     else:
-        ind_out_name = 25
+        ind_outname = 25
+        multi_band_tif = True
 
     for key in list(file_dict.keys()):
 
         shape, transform = get_grid_info(file_dict[key])
-        measurements = get_measurements(file_dict[key])
+        measurements = get_measurements(file_dict[key], multi_band_tif, band_names)
         meta = get_metadata(file_dict[key])
 
         yaml_content = {
@@ -166,7 +203,7 @@ def create_eo3_yaml(file_dict, product_dict):
         }
 
         yaml_dir = os.path.dirname(file_dict[key][0])
-        yaml_name = f'{os.path.basename(file_dict[key][0])[:ind_out_name]}.yaml'
+        yaml_name = f'{os.path.basename(file_dict[key][0])[:ind_outname]}.yaml'
 
         with open(os.path.join(yaml_dir, yaml_name), 'w') as stream:
             yaml.safe_dump(yaml_content, stream, sort_keys=False)
