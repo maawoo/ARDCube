@@ -9,8 +9,11 @@ import logging
 from datetime import datetime
 import rasterio
 
-main_dir = '/home/marco/pypypy/ARDCube_data'
+## True = existing YAML-files will be overwritten // False = YAML-files will only be generated for new files
+overwrite = True
 
+## Set paths
+main_dir = '/home/marco/pypypy/ARDCube_data'
 l8_product = os.path.join(main_dir, 'misc/odc', 'landsat8.yaml')
 s2_product = os.path.join(main_dir, 'misc/odc', 'sentinel2.yaml')
 s1_product = os.path.join(main_dir, 'misc/odc', 'sentinel1.yaml')
@@ -34,41 +37,48 @@ def read_product(product_path):
     return {'name': name, 'satellite': satellite, 'crs': crs, 'res': res, 'n_measurements': n_measurements}
 
 
-def get_checksums(file):
+def get_checksums(file_path):
 
-    src = rasterio.open(file)
+    src = rasterio.open(file_path)
     checksums = [src.checksum(i) for i in src.indexes]
     src.close()
 
     return checksums
 
 
+def create_identity_string(file_path):
+
+    ## Get date string from filename
+    f_base = os.path.basename(file_path)
+    rs = re.search(r'\d{8}|_\d{8}T\d{6}', f_base)  # Without the underscore it only finds the 8 digit pattern
+    date = rs.group()
+    date = date.replace("_", "")  # Remove underscore if it exists
+
+    ## Get tile ID from directory name (FORCE directory structure is assumed!)
+    f_dir = os.path.dirname(file_path)
+    tile_id = os.path.basename(f_dir)
+
+    ## Create identity key for each file based on date string and tile ID
+    identity = f'{tile_id}__{date}'
+
+    return identity
+
+
 def create_file_dict(file_dir, product_dict):
 
     if product_dict['satellite'] == 'sentinel-1':
         f_pattern = '**/*.tif'
-        t_pattern = r'\d{8}T\d{6}'
     else:
         f_pattern = '**/*BOA.tif'
-        t_pattern = r'\d{8}'
 
     dict_out = {}
     for f in glob.iglob(os.path.join(file_dir, f_pattern), recursive=True):
         if sum(get_checksums(f)) != 0:
 
-            ## Get date string from filename
-            f_base = os.path.basename(f)
-            rs = re.search(t_pattern, f_base)
-            date = rs.group()
-
-            ## Get tile ID from directory name (FORCE directory structure is assumed!)
-            f_dir = os.path.dirname(f)
-            tile_id = os.path.basename(f_dir)
-
             ## Create identity key for each file based on date string and tile ID
-            identity = f'{tile_id}__{date}'
+            identity = create_identity_string(f)
 
-            ## Create dictionary
+            ## Fill dictionary
             ## Bands that are stored as separate files (e.g. Sentinel-1 VV & VH bands) have the same identity key
             dict_keys = list(dict_out.keys())
             if identity not in dict_keys:
@@ -83,8 +93,29 @@ def create_file_dict(file_dir, product_dict):
     return dict_out
 
 
-def check_file_dict(file_dict):
-    return None
+def check_file_dict(file_dir, file_dict):
+
+    ## Search for existing YAML-files in the file directory and use same identification as in create_file_dict()
+    yaml_dict = {}
+    for f in glob.iglob(os.path.join(file_dir, '**/*.yaml'), recursive=True):
+
+        ## Create identity key for each file based on date string and tile ID
+        identity = create_identity_string(f)
+
+        ## Fill dictionary
+        yaml_dict[identity] = f
+
+    ## Create new file dictionary if existing YAML files were found, else return initial file dictionary
+    if len(list(yaml_dict.keys())) != 0:
+
+        file_dict_new = {}
+        for key in list(yaml_dict.keys()):
+            file_dict_new[key] = file_dict[key]
+
+        return file_dict_new
+
+    else:
+        return file_dict
 
 
 def get_grid_info(file_dict_entry):
@@ -110,7 +141,8 @@ def create_eo3_yaml(file_dict, product_dict):
     product_name = product_dict['name']
     crs = product_dict['crs']
 
-    ## ...
+    ## This index is used in the for-loop to name the generated YAML-files based on the input files.
+    ## Both FORCE and pyroSAR use their own naming conventions, so file names should be consistent.
     if product_dict['satellite'] == 'sentinel-1':
         ind_out_name = 27
     else:
@@ -140,7 +172,7 @@ def create_eo3_yaml(file_dict, product_dict):
             yaml.safe_dump(yaml_content, stream, sort_keys=False)
 
 
-def main(file_dir, product_path, overwrite=True):
+def main(file_dir, product_path, overwrite=None):
     """
 
     :param file_dir:
@@ -149,17 +181,19 @@ def main(file_dir, product_path, overwrite=True):
     :return:
     """
 
+    assert isinstance(overwrite, bool), 'Parameter \'overwrite\' is expected to be set to True or False!'
+
     ## Create product dictionary
     product_dict = read_product(product_path)
 
     ## Create file dictionary
     file_dict = create_file_dict(file_dir, product_dict)
 
-    ## ...
+    ## Check for existing YAML files and create new dict, if overwrite is set to 'False'
     if not overwrite:
-        file_dict = check_file_dict(file_dict)
+        file_dict = check_file_dict(file_dir, file_dict)
 
-    ## Create metadata YAMLs in EO3 format
+    ## Create metadata YAML files in EO3 format
     create_eo3_yaml(file_dict, product_dict)
 
     return None
@@ -172,7 +206,3 @@ def main(file_dir, product_path, overwrite=True):
 
 #file_dict = main(file_dir_l8, l8_product)
 #file_dict_s1 = main(file_dir_s1, s1_product)
-
-
-
-
