@@ -1,5 +1,3 @@
-# https://github.com/opendatacube/datacube-core/blob/develop/docs/ops/dataset_documents.rst
-
 import os
 import re
 import glob
@@ -46,13 +44,33 @@ def get_checksums(file_path):
     return checksums
 
 
-def create_identity_string(file_path):
+def get_date_string(file_path):
 
-    ## Get date string from filename
     f_base = os.path.basename(file_path)
     rs = re.search(r'\d{8}|_\d{8}T\d{6}', f_base)  # Without the underscore it only finds the 8 digit pattern
     date = rs.group()
     date = date.replace("_", "")  # Remove underscore if it exists
+
+    return date
+
+
+def format_date_string(date):
+
+    if len(date) == 8:
+        date = datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%dT10:00:00.000Z')
+    elif len(date) == 15:
+        date = datetime.strptime(date, '%Y%m%dT%H%M%S').strftime('%Y-%m-%dT%H:%M:%S.000Z')
+    else:
+        raise IndexError('Length of date string is expected to be of length 8 or 15 based on existing file naming '
+                         'conventions.')
+
+    return date
+
+
+def create_identity_string(file_path):
+
+    ## Get date string from filename
+    date = get_date_string(file_path)
 
     ## Get tile ID from directory name (FORCE directory structure is assumed!)
     f_dir = os.path.dirname(file_path)
@@ -109,8 +127,12 @@ def check_file_dict(file_dir, file_dict):
     if len(list(yaml_dict.keys())) != 0:
 
         file_dict_new = {}
-        for key in list(yaml_dict.keys()):
-            file_dict_new[key] = file_dict[key]
+        for key in list(file_dict.keys()):
+
+            if key in list(yaml_dict.keys()):
+                continue
+            else:
+                file_dict_new[key] = file_dict[key]
 
         return file_dict_new
 
@@ -147,25 +169,44 @@ def get_measurements(file_dict_entry, multi_band_tif, band_names):
     :return:
     """
 
-    measurement_dict = {}
+    dict_out = {}
 
     if multi_band_tif:
         for band, i in zip(band_names, range(len(band_names))):
             path = os.path.basename(file_dict_entry[0])
-            measurement_dict[band] = {'path': path, 'band': i+1}
+            dict_out[band] = {'path': path, 'band': i+1}
 
     else:
         assert len(file_dict_entry) == len(band_names), 'An equal number of file paths as band names is expected!'
 
-        for band, path in zip(band_names, file_dict_entry):
+        for band in band_names:
+            path = [path for path in file_dict_entry if band in path][0]
             path = os.path.basename(path)
-            measurement_dict[band] = {'path': path}
+            dict_out[band] = {'path': path}
 
-    return measurement_dict
+    return dict_out
 
 
 def get_metadata(file_dict_entry):
-    return None
+    """
+    ODC currently uses the EO3 format for the YAML files, which is supposed to be an intermediate format before moving
+    on to STAC. The 'properties' section in the YAML, which is filled with the dictionary created in this function,
+    already uses STAC standard names. For more information see:
+    https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html
+    https://github.com/radiantearth/stac-spec/tree/master/item-spec
+    https://github.com/radiantearth/stac-spec/tree/master/extensions/sar (other extensions in parent directory!)
+
+    Timestamp is the only compulsory field. Other useful metadata can be added later on.
+
+    :param file_dict_entry:
+    :param satellite:
+    :return:
+    """
+
+    dict_out = {}
+    dict_out['datetime'] = format_date_string(get_date_string(file_dict_entry[0]))
+
+    return dict_out
 
 
 def create_eo3_yaml(file_dict, product_dict):
@@ -195,7 +236,7 @@ def create_eo3_yaml(file_dict, product_dict):
             'id': str(uuid.uuid4()),
             '$schema': 'https://schemas.opendatacube.org/dataset',
             'product': {'name': product_name},
-            'crs': f"epsg:{crs}",
+            'crs': f"{crs}",
             'grids': {'default': {'shape': shape, 'transform': transform}
                       },
             'measurements': measurements,
@@ -227,19 +268,13 @@ def main(file_dir, product_path, overwrite=None):
     file_dict = create_file_dict(file_dir, product_dict)
 
     ## Check for existing YAML files and create new dict, if overwrite is set to 'False'
-    if not overwrite:
+    if overwrite is False:
         file_dict = check_file_dict(file_dir, file_dict)
 
     ## Create metadata YAML files in EO3 format
     create_eo3_yaml(file_dict, product_dict)
 
-    return None
+    return product_dict
 
 
-#########
 
-#file_dir_s1 = os.path.join(main_dir, 'level-2/S1_20')
-#file_dir_l8 = os.path.join(main_dir, 'level-2/L8_30')
-
-#file_dict = main(file_dir_l8, l8_product)
-#file_dict_s1 = main(file_dir_s1, s1_product)
