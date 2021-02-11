@@ -81,7 +81,7 @@ RUN mkdir -p $INSTALL_DIR/force && \
   # This is needed in case of develop branch
   mkdir -p /develop
 WORKDIR $INSTALL_DIR/force
-COPY . .
+COPY ../../ARDCube/force/docker .
 ARG splits=true
 ARG debug=false
 # Conditionally disable SPLITS which is enabled by default
