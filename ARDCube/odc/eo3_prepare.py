@@ -22,6 +22,7 @@ logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level
 
 
 def read_product(product_path):
+    """Returns information from Product YAML as a dictionary."""
 
     with open(product_path) as f:
         yaml_dict = yaml.safe_load(f)
@@ -36,6 +37,7 @@ def read_product(product_path):
 
 
 def get_checksums(file_path):
+    """Returns the checksum for each band of a raster as a list."""
 
     src = rasterio.open(file_path)
     checksums = [src.checksum(i) for i in src.indexes]
@@ -45,19 +47,25 @@ def get_checksums(file_path):
 
 
 def get_date_string(file_path):
+    """Extracts the date string from a file name."""
 
     f_base = os.path.basename(file_path)
-    rs = re.search(r'\d{8}|_\d{8}T\d{6}', f_base)  # Without the underscore it only finds the 8 digit pattern
+
+    ## Search either for the 8 digit pattern (YYYYmmdd) used in files that were processed with FORCE.
+    ## Or the 15 digit pattern (YYYYmmddTHHMMSS) used in files that were processed with pyroSAR. The underscore is
+    ## necessary, because otherwise only the former pattern is found.
+    rs = re.search(r'\d{8}|_\d{8}T\d{6}', f_base)
     date = rs.group()
-    date = date.replace("_", "")  # Remove underscore if it exists
+    date = date.replace("_", "")
 
     return date
 
 
 def format_date_string(date):
+    """Formats a date string from either YYYYmmdd or YYYYmmddTHHMMSS to YYYY-mm-ddTHH:MM:SS.000Z."""
 
     if len(date) == 8:
-        date = datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%dT10:00:00.000Z')
+        date = datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%dT10:00:00.000Z')  # Use 10 am as a default?
     elif len(date) == 15:
         date = datetime.strptime(date, '%Y%m%dT%H%M%S').strftime('%Y-%m-%dT%H:%M:%S.000Z')
     else:
@@ -68,6 +76,7 @@ def format_date_string(date):
 
 
 def create_identity_string(file_path):
+    """Creates an identity string for a given file based on its tile ID and date string."""
 
     ## Get date string from filename
     date = get_date_string(file_path)
@@ -76,13 +85,24 @@ def create_identity_string(file_path):
     f_dir = os.path.dirname(file_path)
     tile_id = os.path.basename(f_dir)
 
-    ## Create identity key for each file based on date string and tile ID
+    ## Create identity string
     identity = f'{tile_id}__{date}'
 
     return identity
 
 
 def create_file_dict(file_dir, product_dict):
+    """Recursively searches a given directory for matching GeoTIFF files. Files that return a checksum of 0 for all
+    bands will not be included and their path will be stored in a logfile.
+
+    :param file_dir: Path of the file directory. Subdirectories are also searched.
+    :param product_dict: Product dictionary created by read_product()
+
+    :return: Dictionary of the form
+        {'tileid__datestring': ['path/to/band_1.tif', 'path/to/band_2.tif', ...]}
+        or
+        {'tileid__datestring': ['path/to/multiband.tif']}
+    """
 
     if product_dict['satellite'] == 'sentinel-1':
         f_pattern = '**/*.tif'
@@ -112,6 +132,14 @@ def create_file_dict(file_dir, product_dict):
 
 
 def check_file_dict(file_dir, file_dict):
+    """Recursively searches for existing YAML files in the given directory. If YAML files are found, the input file
+    dictionary will be filtered for entries that don't have an associated YAML file already.
+
+    :param file_dir: Path of the file directory. Subdirectories are also searched.
+    :param file_dict: Dictionary created by create_file_dict()
+
+    :return: Dictionary of the same form as the input dictionary (see create_file_dict() for examples).
+    """
 
     ## Search for existing YAML-files in the file directory and use same identification as in create_file_dict()
     yaml_dict = {}
@@ -141,6 +169,7 @@ def check_file_dict(file_dir, file_dict):
 
 
 def get_grid_info(file_dict_entry):
+    """Get shape and transform information for a raster file."""
 
     src = rasterio.open(file_dict_entry[0])
     shape = list(src.shape)
@@ -150,28 +179,24 @@ def get_grid_info(file_dict_entry):
     return shape, transform
 
 
-def get_measurements(file_dict_entry, multi_band_tif, band_names):
-    """
-    Example output if multi_band_tif is False:
-    {'VH': {'path': vh.tif},
-     'VV': {'path': vv.tif}
-     }
+def get_measurements(file_dict_entry, band_names):
+    """Creates a dictionary that can be used as direct input for the measurement section of an EO3 YAML file.
 
-    Example output if multi_band_tif is True:
-    {'blue': {'path': multi_band.tif, 'band': 1},
-     'green': {'path': multi_band.tif, 'band': 2},
-     ...
-    }
+    :param file_dict_entry: Either ['path/to/multiband.tif'] or ['path/to/band_1.tif', 'path/to/band_2.tif', ...]
+    :param band_names: List of band names
 
-    :param file_dict_entry:
-    :param multi_band_tif:
-    :param band_names:
-    :return:
+    :return: Dictionary of the form
+        {'VH': {'path': vh.tif},
+        'VV': {'path': vv.tif}}
+        or
+        {'blue': {'path': multi_band.tif, 'band': 1},
+         'green': {'path': multi_band.tif, 'band': 2},
+         ...}
     """
 
     dict_out = {}
 
-    if multi_band_tif:
+    if len(file_dict_entry) == 1:
         for band, i in zip(band_names, range(len(band_names))):
             path = os.path.basename(file_dict_entry[0])
             dict_out[band] = {'path': path, 'band': i+1}
@@ -188,7 +213,8 @@ def get_measurements(file_dict_entry, multi_band_tif, band_names):
 
 
 def get_metadata(file_dict_entry):
-    """
+    """Creates a dictionary that can be used as direct input for the properties section of an EO3 YAML file.
+
     ODC currently uses the EO3 format for the YAML files, which is supposed to be an intermediate format before moving
     on to STAC. The 'properties' section in the YAML, which is filled with the dictionary created in this function,
     already uses STAC standard names. For more information see:
@@ -196,11 +222,11 @@ def get_metadata(file_dict_entry):
     https://github.com/radiantearth/stac-spec/tree/master/item-spec
     https://github.com/radiantearth/stac-spec/tree/master/extensions/sar (other extensions in parent directory!)
 
-    Timestamp is the only compulsory field. Other useful metadata can be added later on.
+    Timestamp is the only compulsory field. Other useful metadata can/should be added later on.
 
-    :param file_dict_entry:
-    :param satellite:
-    :return:
+    :param file_dict_entry: Either ['path/to/multiband.tif'] or ['path/to/band_1.tif', 'path/to/band_2.tif', ...]
+
+    :return: Dictionary with entries for each metadata field.
     """
 
     dict_out = {}
@@ -210,6 +236,15 @@ def get_metadata(file_dict_entry):
 
 
 def create_eo3_yaml(file_dict, product_dict):
+    """Creates a YAML file for each entry of the input file dictionary. The YAML files are stored in EO3 format so they
+    can be index into an Open Data Cube instance. For more information see:
+    https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html
+
+    :param file_dict: Dictionary created by create_file_dict() or filtered by check_file_dict().
+    :param product_dict: Product dictionary created by read_product()
+
+    :return: YAML file
+    """
 
     product_name = product_dict['name']
     crs = product_dict['crs']
@@ -217,19 +252,15 @@ def create_eo3_yaml(file_dict, product_dict):
 
     ## The index 'ind_outname' is used in the for-loop to name the generated YAML-files based on the input files.
     ## Both FORCE and pyroSAR use their own naming conventions, so file names should be consistent.
-    ## Also 'multi_band_tif' is set to True or False, depending on SAR or optical imagery. The default for pyroSAR is to
-    ## store VH & VV bands in separate GeoTIFFs, whereas FORCE stores multiple bands in a single GeoTIFF file.
     if product_dict['satellite'] == 'sentinel-1':
         ind_outname = 27
-        multi_band_tif = False
     else:
         ind_outname = 25
-        multi_band_tif = True
 
     for key in list(file_dict.keys()):
 
         shape, transform = get_grid_info(file_dict[key])
-        measurements = get_measurements(file_dict[key], multi_band_tif, band_names)
+        measurements = get_measurements(file_dict[key], band_names)
         meta = get_metadata(file_dict[key])
 
         yaml_content = {
@@ -251,13 +282,6 @@ def create_eo3_yaml(file_dict, product_dict):
 
 
 def main(file_dir, product_path, overwrite=None):
-    """
-
-    :param file_dir:
-    :param product_path:
-    :param overwrite:
-    :return:
-    """
 
     assert isinstance(overwrite, bool), 'Parameter \'overwrite\' is expected to be set to True or False!'
 
@@ -275,6 +299,3 @@ def main(file_dir, product_path, overwrite=None):
     create_eo3_yaml(file_dict, product_dict)
 
     return product_dict
-
-
-
