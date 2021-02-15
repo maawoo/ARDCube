@@ -196,11 +196,18 @@ def get_measurements(file_dict_entry, band_names):
 
     dict_out = {}
 
+    ## Landsat 8 & Sentinel 2
     if len(file_dict_entry) == 1:
         for band, i in zip(band_names, range(len(band_names))):
             path = os.path.basename(file_dict_entry[0])
-            dict_out[band] = {'path': path, 'band': i+1}
+            dict_out[band] = {'path': path, 'band': i+1}  # +1 because range() starts at 0 not 1
 
+        ## Add QAI file
+        base_name = os.path.basename(file_dict_entry[0])
+        qai_band = base_name.replace('BOA', 'QAI')
+        dict_out['qai'] = {'path': qai_band, 'band': len(band_names)+1}
+
+    ## Sentinel 1
     else:
         assert len(file_dict_entry) == len(band_names), 'An equal number of file paths as band names is expected!'
 
