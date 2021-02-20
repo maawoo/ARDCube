@@ -2,17 +2,20 @@ Bootstrap: debootstrap
 MirrorURL: http://us.archive.ubuntu.com/ubuntu
 OSVersion: bionic
 
+%files 
+    /home/marco/pypypy/ARDCube/ARDCube/singularity/snap /snap
 
 %post -c /bin/bash
+
+    ######### UBUNTU #########
+
+    # https://github.com/mkandes/naked-singularity/blob/master/definition-files/ubuntu/Singularity.ubuntu-18.04
 
     # Set operating system mirror URL
     export MIRRORURL='http://us.archive.ubuntu.com/ubuntu'
 
     # Set operating system version
     export OSVERSION='bionic'
-
-    # Set system locale
-    export LC_ALL=C
 
     # Set debian frontend interface
     export DEBIAN_FRONTEND='noninteractive'
@@ -45,58 +48,69 @@ OSVersion: bionic
     # Upgrade all software packages to their latest versions
     apt-get -y update && apt-get -y upgrade
 
-    # Install common packages from 'main'
-    apt-get -y install autoconf
-    apt-get -y install automake
-    apt-get -y install build-essential
-    apt-get -y install cmake
-    apt-get -y install evince
-    apt-get -y install expect
-    apt-get -y install gfortran
-    apt-get -y install libtool
-    apt-get -y install mlocate
-    apt-get -y install pkg-config
-    apt-get -y install wget
-    apt-get -y install zip
+    # Install some genereal packages
+    apt-get install -y --no-install-recommends --no-install-suggests \
+        build-essential \
+        wget \
+        zip \
+        git \
+        vim \
+        locales \
+        && apt-get autoremove -y \
+        && apt-get clean -y
+
+    # Set locale 
+    locale-gen en_US.UTF-8
+    export LANG=en_US.UTF-8
+    export LANGUAGE=en_US:en
+    export LC_ALL=en_US.UTF-8
+    
+    ######### SNAP #########
+
+    # Create directory and c
+    mkdir -p /src
+    mv /snap /src/snap
+
+    # SNAP wants the current folder '.' included in LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=".:$LD_LIBRARY_PATH"
+
+    # Install more packages
+    apt-get install -y --no-install-recommends --no-install-suggests \
+        libgfortran5 \
+        python3 \
+        python3-dev \
+        python3-pip \
+        python3-setuptools \
+        default-jdk maven \
+        && apt-get autoremove -y \
+        && apt-get clean -y
+
+    export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64/"
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+
+    # Install SNAP 
+    bash /src/snap/install.sh
+
+    # Test
+    /usr/bin/python3 /src/snap/about.py
+
+    update-alternatives --remove python /usr/bin/python3
 
     # Cleanup
     apt-get -y autoremove --purge
     apt-get -y clean
-
-    # Update database for mlocate
-    updatedb
+    rm -rf /src
 
 %test
-    # Add test script to run after %post finished setting up the container.
 
 %environment
- 
-    # Set operating system mirror URL
+
     export MIRRORURL='http://us.archive.ubuntu.com/ubuntu'
-
-    # Set operating system version
     export OSVERSION='bionic'
-
-    # Set system locale
-    export LC_ALL='C'
-
-    # Set debian frontend interface
     export DEBIAN_FRONTEND='noninteractive'
 
+    export LANGUAGE=en_US:en
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
 
-%runscript
-    # Define a script that can be executed if the container is run. Arguments following the container name are passed!
-    # ./ardcube.sif settings.yaml argument1 argument2
-
-
-%labels
-
-    APPLICATION_NAME ARDCube
-    APPLICATION_VERSION 1.0.0
-
-    AUTHOR_NAME Marco Wolsza
-    AUTHOR_EMAIL marco.wolsza@uni-jena.de
-
-    LAST_UPDATED 20210217
-
-%help
+    export PATH="$PATH:/usr/local/snap/bin/:/root/.snap/auxdata/gdal/gdal-3-0-0/bin"
