@@ -1,0 +1,79 @@
+Bootstrap: debootstrap
+MirrorURL: http://us.archive.ubuntu.com/ubuntu
+OSVersion: bionic
+
+%post -c /bin/bash
+
+    # Set operating system mirror URL
+    export MIRRORURL='http://us.archive.ubuntu.com/ubuntu'
+
+    # Set operating system version
+    export OSVERSION='bionic'
+
+    # Set system locale
+    export LC_ALL=C
+
+    # Set debian frontend interface
+    export DEBIAN_FRONTEND='noninteractive'
+
+    # Install system metapackages
+    apt-get -y install ubuntu-standard
+    apt-get -y install ubuntu-server
+
+    # Add repositories
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION} main"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION} universe"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION} multiverse"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION} restricted"
+
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-updates main"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-updates universe"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-updates multiverse"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-updates restricted"
+
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-backports main"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-backports universe"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-backports multiverse"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-backports restricted"
+
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-security main"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-security universe"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-security multiverse"
+    add-apt-repository -y "deb ${MIRRORURL} ${OSVERSION}-security restricted"
+
+    # Upgrade all software packages to their latest versions
+    apt-get -y update && apt-get -y upgrade
+    
+    # Install some general packages
+    apt-get install -y --no-install-recommends --no-install-suggests \
+        build-essential \
+        wget \
+        curl \
+        zip \
+        git \
+        vim \
+        locales \
+        && apt-get autoremove -y \
+        && apt-get clean -y
+
+    # Set locale 
+    locale-gen en_US.UTF-8
+    export LANG=en_US.UTF-8
+    export LANGUAGE=en_US:en
+    export LC_ALL=en_US.UTF-8
+
+    # Cleanup
+    apt-get -y autoremove --purge
+    apt-get -y clean
+
+    # Update database for mlocate
+    updatedb
+
+%environment
+    export MIRRORURL='http://us.archive.ubuntu.com/ubuntu'
+    export OSVERSION='bionic'
+    export DEBIAN_FRONTEND='noninteractive'
+
+    export LANGUAGE=en_US:en
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
