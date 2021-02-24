@@ -1,2 +1,0 @@
-sudo singularity build force.sif docker://davidfrantz/force
-sudo singularity build ubuntu_1804.sif docker://ubuntu:18.04
