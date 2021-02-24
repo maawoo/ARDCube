@@ -26,12 +26,21 @@ From: ubuntu:18.04
     export LANGUAGE=en_US:en
     export LC_ALL=en_US.UTF-8
 
+    # Create directory and move files
+    mkdir -p /src
+    mv /pyrosnap /src
+    export INSTALL_DIR=/src/pyrosnap
+
+    # Only used to check if files were downloaded already and copied over. If not, they will be downloaded using wget.
+    export SNAP_FILE=$INSTALL_DIR/esa-snap_sentinel_unix_8_0.sh
 
     ######### SNAP #########
 
-    # Create directory and move snap files
-    mkdir -p /src
-    mv /pyrosnap /src
+    # Helpful resources:
+    # https://github.com/mundialis/esa-snap/tree/ubuntu
+    # https://github.com/ESA-PhiLab/OpenSarToolkit/blob/master/Dockerfile
+    # https://senbox.atlassian.net/wiki/spaces/SNAP/pages/30539778/Install+SNAP+on+the+command+line
+    # https://senbox.atlassian.net/wiki/spaces/SNAP/pages/30539785/Update+SNAP+from+the+command+line
 
     # SNAP wants the current folder '.' included in LD_LIBRARY_PATH
     export LD_LIBRARY_PATH=".:$LD_LIBRARY_PATH"
@@ -43,14 +52,18 @@ From: ubuntu:18.04
     # Install SNAP 
     echo -e "######################### \nInstalling SNAP \n#########################"
 
-    # Install and update snap (install parameters in response.varfile!)
-    #wget -q -O /src/snap/esa-snap_sentinel_unix_${SNAPVER}_0.sh \
-    #    "https://step.esa.int/downloads/${SNAPVER}.0/installers/esa-snap_sentinel_unix_${SNAPVER}_0.sh"
-    #sh /src/pyrosnap/esa-snap_sentinel_unix_${SNAPVER}_0.sh -q -varfile /src/pyrosnap/response.varfile
-    bash /src/pyrosnap/esa-snap_sentinel_unix_8_0.sh -q -varfile /src/pyrosnap/response.varfile
+    # Run install script and download first if necessary (install parameters in response.varfile!)
+    if [ -f $SNAP_FILE ]; then
+        echo "'$SNAP_FILE' exists. "
+        bash $SNAP_FILE -q -varfile $INSTALL_DIR/response.varfile
+    else
+        echo "The file '$SNAP_FILE' does not exist. Proceed to download from https://step.esa.int/downloads/..."
+        wget -q -O $SNAP_FILE \
+            "https://step.esa.int/downloads/8.0/installers/esa-snap_sentinel_unix_8_0.sh"
+        bash $SNAP_FILE -q -varfile $INSTALL_DIR/response.varfile
+    fi
 
     # Current workaround for "commands hang after they are actually executed":  
-    # https://senbox.atlassian.net/wiki/spaces/SNAP/pages/30539785/Update+SNAP+from+the+command+line
     /opt/snap/bin/snap --nosplash --nogui --modules --update-all 2>&1 | while read -r line; do
         echo "$line"
         [ "$line" = "updates=0" ] && sleep 2 && pkill -TERM -f "snap/jre/bin/java"
@@ -58,7 +71,6 @@ From: ubuntu:18.04
 
     # Set usable memory to 12G
     echo "-Xmx12G" > /opt/snap/bin/gpt.vmoptions
-
 
     # Cleanup
     apt-get -y autoremove --purge
@@ -70,7 +82,3 @@ From: ubuntu:18.04
     export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64/"
     export LD_LIBRARY_PATH=".:$LD_LIBRARY_PATH"  # not sure if needed after installation
     export PATH="/opt/snap/bin:$PATH"
-
-
-%runscript
-
