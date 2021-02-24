@@ -60,7 +60,35 @@ From: ubuntu:18.04
     echo "-Xmx12G" > /opt/snap/bin/gpt.vmoptions
 
 
+    ######### pyroSAR #########
+    echo -e "######################### \nInstalling Conda & pyroSAR \n#########################"
+
+    # Install GDAL
+    apt-get install -y \
+        python-gdal \
+        python3-gdal \
+        gdal-bin \
+        && apt-get autoremove -y \
+        && apt-get clean -y
+
+    # Download latest Miniconda and run install script
+    #wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /src/miniconda.sh
+    bash /src/pyrosnap/miniconda.sh -bfp /opt/miniconda3/
+
+    # Add to PATH variable
+    export PATH="/opt/miniconda3/bin:$PATH"
+
+    # Update / Configs
+    conda update -y -n base conda
+    conda config --system --prepend channels conda-forge
+    conda config --system --set auto_update_conda false
+    conda config --system --set show_channel_urls true
+
+    # Install pyroSAR
+    conda install -y --channel conda-forge pyroSAR
+
     # Cleanup
+    conda clean -y --all
     apt-get -y autoremove --purge
     apt-get -y clean
     rm -rf /src
@@ -69,7 +97,7 @@ From: ubuntu:18.04
 %environment
     export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64/"
     export LD_LIBRARY_PATH=".:$LD_LIBRARY_PATH"  # not sure if needed after installation
-    export PATH="/opt/snap/bin:$PATH"
+    export PATH="/opt/miniconda3/bin:/opt/snap/bin:$PATH"
 
 
 %runscript
