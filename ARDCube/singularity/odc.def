@@ -1,0 +1,14 @@
+Bootstrap: docker
+From: ubuntu:18.04
+
+
+%files 
+
+
+%post -c /bin/bash
+
+
+%environment
+
+
+%runscript
