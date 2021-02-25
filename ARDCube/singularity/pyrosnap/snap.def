@@ -3,10 +3,7 @@ From: ubuntu:18.04
 
 
 %files 
-    # Copy local files that are needed for %post (aka build) section
-    # At a minimum a response.varfile for the SNAP installation should be provided. 
-    # Install scripts for SNAP 8.0 and the latest Miniconda version can be provided as well. They will be downloaded using wget if not provided. 
-    ./pyrosnap /
+    ./files /
 
 
 %post -c /bin/bash
@@ -31,15 +28,13 @@ From: ubuntu:18.04
 
     # Create directory and move files
     mkdir -p /src
-    mv /pyrosnap /src
-    export INSTALL_DIR=/src/pyrosnap
+    mv /files /src
+    export INSTALL_DIR=/src/files
 
     # Only used to check if files were downloaded already and copied over. If not, they will be downloaded using wget.
     export SNAP_FILE=$INSTALL_DIR/esa-snap_sentinel_unix_8_0.sh
-    export MINICONDA_FILE=$INSTALL_DIR/Miniconda3-latest-Linux-x86_64.sh
 
     ######### SNAP #########
-    echo -e "######################### \nInstalling SNAP \n#########################"
 
     # Helpful resources:
     # https://github.com/mundialis/esa-snap/tree/ubuntu
@@ -52,7 +47,10 @@ From: ubuntu:18.04
 
     # Install Java
     apt-get install default-jdk maven -y
-    export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64/" 
+    export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64/"
+
+    # Install SNAP 
+    echo -e "######################### \nInstalling SNAP \n#########################"
 
     # Run install script and download first if necessary (install parameters in response.varfile!)
     if [ -f $SNAP_FILE ]; then
@@ -74,43 +72,7 @@ From: ubuntu:18.04
     # Set usable memory to 12G
     echo "-Xmx12G" > /opt/snap/bin/gpt.vmoptions
 
-
-    ######### pyroSAR #########
-    echo -e "######################### \nInstalling Conda & pyroSAR \n#########################"
-
-    # Install GDAL
-    apt-get install -y \
-        python-gdal \
-        python3-gdal \
-        gdal-bin \
-        && apt-get autoremove -y \
-        && apt-get clean -y
-
-    # Download latest Miniconda and run install script
-    if [ -f $MINICONDA_FILE ]; then
-        echo "'$MINICONDA_FILE' exists. "
-        bash $MINICONDA_FILE -q -varfile $INSTALL_DIR/response.varfile
-    else
-        echo "The file '$MINICONDA_FILE' does not exist. Proceed to download from https://repo.anaconda.com/miniconda..."
-        wget -q -O $MINICONDA_FILE \
-            "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
-        bash $MINICONDA_FILE -bfp /opt/miniconda3
-    fi
-
-    # Add to PATH variable
-    export PATH="/opt/miniconda3/bin:$PATH"
-
-    # Update / Configs
-    conda update -y -n base conda
-    conda config --system --prepend channels conda-forge
-    conda config --system --set auto_update_conda false
-    conda config --system --set show_channel_urls true
-
-    # Install pyroSAR
-    conda install -y --channel conda-forge pyroSAR
-
     # Cleanup
-    conda clean -y --all
     apt-get -y autoremove --purge
     apt-get -y clean
     rm -rf /src
@@ -119,4 +81,4 @@ From: ubuntu:18.04
 %environment
     export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64/"
     export LD_LIBRARY_PATH=".:$LD_LIBRARY_PATH"  # not sure if needed after installation
-    export PATH="/opt/miniconda3/bin:/opt/snap/bin:$PATH"
+    export PATH="/opt/snap/bin:$PATH"
