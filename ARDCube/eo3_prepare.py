@@ -306,3 +306,7 @@ def main(file_dir, product_path, overwrite=None):
     create_eo3_yaml(file_dict, product_dict)
 
     return product_dict
+
+main(os.path.join(main_dir, 'level-2/L8_30'), l8_product, overwrite)
+main(os.path.join(main_dir, 'level-2/S1_20'), s1_product, overwrite)
+main(os.path.join(main_dir, 'level-2/S2_10'), s2_product, overwrite)

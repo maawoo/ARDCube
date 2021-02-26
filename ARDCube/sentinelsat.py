@@ -9,11 +9,11 @@ import logging
 
 ############################################################
 
-maindir = '/home/marco/pypypy/00_data/pyro_test'
+maindir = '/home/marco/pypypy/pyro_test'
 s1_dir = os.path.join(maindir, 'S1')
 s2_dir = os.path.join(maindir, 'S2')
 aoi = os.path.join(maindir, 'misc', 'th_stripe.geojson')
-timespan = ('20200601', '20200606')
+timespan = ('20200601', '20200604')
 s1_producttype = 'GRD'
 s2_producttype = 'S2MSI1C'
 s2_cloudcover = (0, 80)  # min, max (percentage)
