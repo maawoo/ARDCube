@@ -1,0 +1,26 @@
+Bootstrap: docker
+From: opendatacube/geobase:wheels-3.0.4
+Stage: env_builder
+
+%files
+    ./requirements.txt /
+
+%post -c /bin/bash
+    mkdir -p /conf
+    mv /requirements.txt /conf
+
+    env-build-tool new /conf/requirements.txt /env /wheels
+
+
+Bootstrap: docker
+From: opendatacube/geobase:runner-3.0.4
+Stage: final
+
+%files from env_builder
+    /env /env
+    /bin/tini /bin/tini
+
+%post
+
+%startscript
+    /bin/tini -- 
