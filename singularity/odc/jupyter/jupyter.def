@@ -1,3 +1,6 @@
+# https://github.com/opendatacube/geobase
+# https://github.com/opendatacube/cube-in-a-box
+
 Bootstrap: docker
 From: opendatacube/geobase:wheels-3.0.4
 Stage: env_builder

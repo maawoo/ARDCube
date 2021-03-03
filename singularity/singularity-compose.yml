@@ -1,24 +1,24 @@
-## https://github.com/opendatacube/cube-in-a-box
+# https://github.com/opendatacube/cube-in-a-box
 
 version: "1.0"
 
 instances:
 
-  odc-postgres:
+  postgres:
     build:
-      context: ./postgres
+      context: ./odc/postgres
       recipe: postgres.def
     ports:
       - 5432:5432
     volumes:
-     - ./postgres/env_file.sh:/.singularity.d/env/env_file.sh
+     - ./odc/postgres/env_postgres.sh:/.singularity.d/env/env_postgres.sh
   
-  odc-jupyter:
+  jupyter:
     build:
-      context: ./jupyter
+      context: ./odc/jupyter
       recipe: jupyter.def
     volumes:
-      - ./jupyter/env_file.sh:/.singularity.d/env/env_file.sh
+      - ./odc/jupyter/env_jupyter.sh:/.singularity.d/env/env_jupyter.sh
       - /home/marco/pypypy/ARDCube/notebooks:/opt/notebooks
     ports:
       - 80:8888
