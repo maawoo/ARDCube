@@ -24,6 +24,17 @@ Stage: final
     /bin/tini /bin/tini
 
 %post
+    mkdir /opt/notebooks
+
+%environment
+    export GDAL_DATA=$(gdal-config --datadir)
+    export LC_ALL=C.UTF-8
+    export PATH="/env/bin:$PATH"
 
 %startscript
-    /bin/tini -- 
+    echo "Starting notebook..."
+    echo "Open browser to localhost:8888"
+    
+    exec jupyter notebook --notebook-dir=/opt/notebooks --ip='*' --port=8888 --no-browser --allow-root
+
+    #exec /bin/tini -- jupyter notebook --notebook-dir=/opt/notebooks --ip="0.0.0.0" --NotebookApp.token='secretpassword' --allow-root 

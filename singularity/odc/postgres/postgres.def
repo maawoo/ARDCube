@@ -4,7 +4,5 @@ From: postgis/postgis:10-2.5
 %post
 
 %environment
-    #export POSTGRES_DB=opendatacube
-    #export POSTGRES_PASSWORD=opendatacubepassword
-    #export POSTGRES_USER=opendatacube
+
 

@@ -13,7 +13,3 @@ export DB_HOSTNAME
 export DB_USERNAME
 export DB_PASSWORD
 export DB_DATABASE
-
-export GDAL_DATA=$(gdal-config --datadir)
-export LC_ALL=C.UTF-8
-export PATH="/env/bin:$PATH"
