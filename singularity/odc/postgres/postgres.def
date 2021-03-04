@@ -1,8 +1,2 @@
 Bootstrap: docker
 From: postgis/postgis:10-2.5
-
-%post
-
-%environment
-
-
