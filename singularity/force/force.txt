@@ -1,1 +1,0 @@
-sudo singularity build force.sif docker://davidfrantz/force
