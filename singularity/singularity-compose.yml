@@ -19,7 +19,7 @@ instances:
       - ./odc/jupyter/env_jupyter.sh:/.singularity.d/env/env_jupyter.sh
       #- ./odc/jupyter/notebooks:/opt/notebooks
       - /home/marco/pypypy/ARDCube/notebooks:/opt/notebooks
-    command: ["/bin/tini", "--", "jupyter", "notebook", "--notebook-dir=/opt/notebooks", "--ip='0.0.0.0'", "--port=8888", "--no-browser", "--allow-root"]
+    command: ["/bin/tini", "-s", "--", "jupyter", "notebook", "--notebook-dir=/opt/notebooks", "--ip='0.0.0.0'", "--port=8888", "--no-browser", "--allow-root"]
 
   force:
     build:
