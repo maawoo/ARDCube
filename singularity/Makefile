@@ -5,26 +5,28 @@ start:
 	singularity instance start ./force/force.sif force_c
 	singularity instance start -B ./odc/postgres/postgres_data:/var/lib/postgresql/data \
 		-B ./odc/postgres/postgres_run:/var/run/postgresql ./odc/postgres/postgres.sif postgres_c
-	singularity instance start ./odc/jupyter/jupyter.sif jupyter_c
+	singularity instance start ./odc/datacube/datacube.sif datacube_c
 
-	@echo "Don't forget to stop the instances when you're done using the 'make stop' command!"
+	@echo "------------"
+	@echo "Don't forget to stop all instances when you're done by using the 'make stop' command!"		
+	@echo "------------"
 
 stop:
 	singularity instance stop pyrosar_c
 	singularity instance stop force_c
 	singularity instance stop postgres_c
-	singularity instance stop jupyter_c
+	singularity instance stop datacube_c
 
 
 ## ODC
 
-run_db:
+start_db:
 	singularity run instance://postgres_c
-	# No runscript was defined in the postgres.def file, so the container will run whatever was defined by the Docker image. 
-	# More info: https://hub.docker.com/r/postgis/postgis
+	# No runscript is defined in the postgres.def file, so the container will run whatever was defined by the original Docker image. 
+	# https://hub.docker.com/r/postgis/postgis
 
 init:
-	singularity exec instance://jupyter_c datacube -v system init
+	singularity exec instance://datacube_c datacube -v system init
 
 product:
 	singularity-compose exec jupyter \
