@@ -1,0 +1,81 @@
+Bootstrap: docker
+From: ubuntu:20.04
+
+
+%files
+    ./files /
+
+
+%post -c /bin/bash
+ 
+    ## Upgrade all software packages to their latest versions
+    apt-get -y update && apt-get -y upgrade
+
+    ## Install some general packages
+    apt-get install -y --no-install-recommends --no-install-suggests \
+        build-essential \
+        wget \
+        && apt-get autoremove -y \
+        && apt-get clean -y
+
+    ## Create directory and move files
+    mkdir -p /src
+    mv /files /src
+    export INSTALL_DIR=/src/files
+
+
+    echo -e "######################### \nInstalling MINICONDA \n#########################"
+
+    ## Only used to check if files were downloaded already and copied over. If not, they will be downloaded using wget.
+    export MINICONDA_FILE=$INSTALL_DIR/Miniconda3-latest-Linux-x86_64.sh
+
+    ## Download latest Miniconda and run install script
+    if [ -f $MINICONDA_FILE ]; then
+        echo "'$MINICONDA_FILE' exists. "
+        bash $MINICONDA_FILE -bfp /opt/miniconda3
+    else
+        echo "The file '$MINICONDA_FILE' does not exist. Proceed to download from https://repo.anaconda.com/miniconda..."
+        wget -q -O $MINICONDA_FILE \
+            "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+        bash $MINICONDA_FILE -bpf /opt/miniconda3
+    fi
+
+    ## Add to PATH variable
+    export PATH="/opt/miniconda3/bin:$PATH"
+
+    ## Update / Configs
+    conda update -y -n base conda
+    conda config --system --prepend channels conda-forge
+    conda config --system --set auto_update_conda false
+    conda config --system --set show_channel_urls true
+
+
+    echo -e "######################### \nInstalling ODC \n#########################"
+
+    ## Based on the general install instructions instead of existing Dockerfiles.
+    ## https://datacube-core.readthedocs.io/en/latest/ops/conda.html
+    
+    conda install -y datacube
+    conda install -y jupyter matplotlib scipy
+
+
+    ## Cleanup
+    conda clean -y --all
+    apt-get -y autoremove --purge
+    apt-get -y clean
+    rm -rf /src
+
+
+%environment
+    export GDAL_DATA=$(gdal-config --datadir)
+    export LC_ALL=C.UTF-8
+    export PATH="/opt/miniconda3/bin:$PATH"
+
+    export DB_HOSTNAME=postgres
+    export DB_USERNAME=opendatacube
+    export DB_PASSWORD=opendatacubepassword
+    export DB_DATABASE=opendatacube
+
+
+%runscript
+    exec "$@"
