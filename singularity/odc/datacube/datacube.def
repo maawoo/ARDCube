@@ -37,7 +37,7 @@ From: ubuntu:20.04
         echo "The file '$MINICONDA_FILE' does not exist. Proceed to download from https://repo.anaconda.com/miniconda..."
         wget -q -O $MINICONDA_FILE \
             "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
-        bash $MINICONDA_FILE -bpf /opt/miniconda3
+        bash $MINICONDA_FILE -bfp /opt/miniconda3
     fi
 
     ## Add to PATH variable
@@ -67,11 +67,9 @@ From: ubuntu:20.04
 
 
 %environment
-    export GDAL_DATA=$(gdal-config --datadir)
     export LC_ALL=C.UTF-8
     export PATH="/opt/miniconda3/bin:$PATH"
 
-    export DB_HOSTNAME=postgres
     export DB_USERNAME=opendatacube
     export DB_PASSWORD=opendatacubepassword
     export DB_DATABASE=opendatacube
