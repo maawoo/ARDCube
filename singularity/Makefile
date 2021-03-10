@@ -1,25 +1,30 @@
-# You can follow the steps below in order to get yourself a local ODC.
-# Once running, you can access a Jupyter environment 
-# at 'http://localhost' with password 'secretpassword'
+## General
 
-# Tini is used to avoid kernel crashes:
-# https://jupyter-notebook.readthedocs.io/en/stable/public_server.html#docker-cmd
-# 
+start:
+	singularity instance start ./pyrosar/pyrosar.sif pyrosar_c
+	singularity instance start ./force/force.sif force_c
+	singularity instance start -B ./odc/postgres/postgres_data:/var/lib/postgresql/data \
+		-B ./odc/postgres/postgres_run:/var/run/postgresql ./odc/postgres/postgres.sif postgres_c
+	singularity instance start ./odc/jupyter/jupyter.sif jupyter_c
 
-build:
-	singularity-compose build
+	@echo "Don't forget to stop the instances when you're done using the 'make stop' command!"
 
-up:
-	singularity-compose up
+stop:
+	singularity instance stop pyrosar_c
+	singularity instance stop force_c
+	singularity instance stop postgres_c
+	singularity instance stop jupyter_c
 
-down:
-	singularity-compose down
 
-shell:
-	singularity-compose shell --cleanenv jupyter
+## ODC
+
+run_db:
+	singularity run instance://postgres_c
+	# No runscript was defined in the postgres.def file, so the container will run whatever was defined by the Docker image. 
+	# More info: https://hub.docker.com/r/postgis/postgis
 
 init:
-	singularity-compose exec jupyter datacube -v system init
+	singularity exec instance://jupyter_c datacube -v system init
 
 product:
 	singularity-compose exec jupyter \
@@ -27,11 +32,12 @@ product:
 
 index:
 
+
+## Jupyter
+
 jupyter:
 	singularity-compose exec jupyter \
-		/bin/tini -- jupyter notebook --notebook-dir=/opt/notebooks --ip='0.0.0.0' --NotebookApp.token='secretpassword' \
-			--allow-root --no-browser
+		/bin/tini -- jupyter notebook --notebook-dir=/opt/notebooks --ip='0.0.0.0' --allow-root --no-browser
 
-
-
-
+# Tini is used to avoid kernel crashes:
+# https://jupyter-notebook.readthedocs.io/en/stable/public_server.html#docker-cmd
