@@ -1,15 +1,19 @@
+SHELL := /bin/bash
+
 ## General
 
 start:
 	singularity instance start ./pyrosar/pyrosar.sif pyrosar_c
 	singularity instance start ./force/force.sif force_c
-	singularity instance start -B ./odc/postgres/postgres_data:/var/lib/postgresql/data \
-		-B ./odc/postgres/postgres_run:/var/run/postgresql ./odc/postgres/postgres.sif postgres_c
-	singularity instance start ./odc/datacube/datacube.sif datacube_c
+	singularity instance start -B ./postgres/postgres_data:/var/lib/postgresql/data \
+		-B ./postgres/postgres_run:/var/run/postgresql ./postgres/postgres.sif postgres_c
+	singularity instance start ./datacube/datacube.sif datacube_c
 
 	@echo "------------"
 	@echo "Don't forget to stop all instances when you're done by using the 'make stop' command!"		
 	@echo "------------"
+
+	singularity instance list
 
 stop:
 	singularity instance stop pyrosar_c
@@ -20,13 +24,20 @@ stop:
 
 ## ODC
 
-start_db:
-	singularity run instance://postgres_c
-	# No runscript is defined in the postgres.def file, so the container will run whatever was defined by the original Docker image. 
+start-db:
+	# This starts the postgres server in the background, which will list on port 5432. 
+	# Session output (stdout & stderr) will be written to 'postgres_log'. Useful resources:
+	# https://www.postgresql.org/docs/current/server-start.html
 	# https://hub.docker.com/r/postgis/postgis
+	singularity run instance://postgres_c >postgres_log 2>&1 &
 
-init:
-	singularity exec instance://datacube_c datacube -v system init
+init-db:
+	# Only necessary to run this once to initialize the Data Cube database schema.
+	singularity exec --env DB_HOSTNAME=$HOSTNAME instance://datacube_c datacube -v system init
+
+check-db:
+	# Check and display current configuration.
+	singularity exec --env DB_HOSTNAME=$HOSTNAME instance://datacube_c datacube system check
 
 product:
 	singularity-compose exec jupyter \
