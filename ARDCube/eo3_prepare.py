@@ -7,19 +7,6 @@ import logging
 from datetime import datetime
 import rasterio
 
-## True = existing YAML-files will be overwritten // False = YAML-files will only be generated for new files
-overwrite = True
-
-## Set paths
-main_dir = '/home/marco/pypypy/ARDCube_data'
-l8_product = os.path.join(main_dir, 'misc/odc', 'landsat8.yaml')
-s2_product = os.path.join(main_dir, 'misc/odc', 'sentinel2.yaml')
-s1_product = os.path.join(main_dir, 'misc/odc', 'sentinel1.yaml')
-
-time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-log_path = os.path.join(main_dir, 'log', f'{time}__eo3_prepare_failed_checksum.log')
-logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')  # save to file
-
 
 def read_product(product_path):
     """Returns information from Product YAML as a dictionary."""
@@ -307,6 +294,21 @@ def main(file_dir, product_path, overwrite=None):
 
     return product_dict
 
-main(os.path.join(main_dir, 'level-2/L8_30'), l8_product, overwrite)
-main(os.path.join(main_dir, 'level-2/S1_20'), s1_product, overwrite)
-main(os.path.join(main_dir, 'level-2/S2_10'), s2_product, overwrite)
+
+## True = existing YAML-files will be overwritten // False = YAML-files will only be generated for new files
+overwrite = True
+
+## Set paths
+data_dir = '/home/marco/pypypy/ARDCube_data'
+code_dir = '/home/marco/pypypy/ARDCube'
+l8_product = os.path.join(code_dir, 'misc/odc/product_definitions', 'landsat8.yaml')
+s2_product = os.path.join(code_dir, 'misc/odc/product_definitions', 'sentinel2.yaml')
+s1_product = os.path.join(code_dir, 'misc/odc/product_definitions', 'sentinel1.yaml')
+
+time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+log_path = os.path.join(data_dir, 'log', f'{time}__eo3_prepare_failed_checksum.log')
+logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')  # save to file
+
+main(os.path.join(data_dir, 'level-2/L8_30'), l8_product, overwrite)
+main(os.path.join(data_dir, 'level-2/S1_20'), s1_product, overwrite)
+main(os.path.join(data_dir, 'level-2/S2_10'), s2_product, overwrite)
