@@ -1,4 +1,3 @@
-SHELL := /bin/bash
 
 ## General
 
@@ -35,22 +34,30 @@ init-db:
 	# Only necessary to run this once to initialize the Data Cube database schema.
 	singularity exec --env DB_HOSTNAME=$HOSTNAME instance://datacube_c datacube -v system init
 
+delete-db:
+	singularity exec --env DB_HOSTNAME=$HOSTNAME instance://datacube_c dropdb -h $HOSTNAME -U odcuser opendatacube
+
+create-db:
+	singularity exec --env DB_HOSTNAME=$HOSTNAME instance://datacube_c createdb -h $HOSTNAME -U odcuser opendatacube
+
 check-db:
 	# Check and display current configuration.
 	singularity exec --env DB_HOSTNAME=$HOSTNAME instance://datacube_c datacube system check
 
-product:
-	singularity-compose exec jupyter \
-		datacube product add https://raw.githubusercontent.com/digitalearthafrica/config/master/products/esa_s2_l2a.odc-product.yaml
+product-add:
+	# = Index product YAMLs
+	# Deleting products is a bit more complicated: https://gist.github.com/omad/1ae3463a123f37a9acf37213bebfde86
+	singularity exec --env DB_HOSTNAME=$HOSTNAME instance://datacube_c \
+		datacube product add /home/marco/pypypy/ARDCube/misc/odc/product_definitions/*.yaml
 
-index:
+data-add:
+	# = Index dataset YAMLs
+	singularity exec --env DB_HOSTNAME=$HOSTNAME instance://datacube_c \
+		datacube dataset add /home/marco/pypypy/ARDCube_data/level-2/*/*/*.yaml
 
 
 ## Jupyter
 
 jupyter:
-	singularity-compose exec jupyter \
-		/bin/tini -- jupyter notebook --notebook-dir=/opt/notebooks --ip='0.0.0.0' --allow-root --no-browser
-
-# Tini is used to avoid kernel crashes:
-# https://jupyter-notebook.readthedocs.io/en/stable/public_server.html#docker-cmd
+	singularity-compose exec instance://datacube_c \
+		jupyter notebook --notebook-dir=/home/marco/pypypy/ARDCube/notebooks --ip='0.0.0.0' --allow-root --no-browser --port=8888 --NotebookApp.token='secretpassword'
