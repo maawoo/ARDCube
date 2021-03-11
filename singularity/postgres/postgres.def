@@ -2,6 +2,6 @@ Bootstrap: docker
 From: postgis/postgis:10-2.5
 
 %environment
+    export POSTGRES_USER=odcuser
+    export POSTGRES_PASSWORD=odcpassword
     export POSTGRES_DB=opendatacube
-    export POSTGRES_PASSWORD=opendatacubepassword
-    export POSTGRES_USER=opendatacube
