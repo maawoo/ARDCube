@@ -1,13 +1,13 @@
-name: ls8_level2_force
-description: Landsat 8 - Processed to Level 2 ARD using FORCE
+name: l8_ARD_30
+description: Landsat 8 ARD - 30m
 metadata_type: eo3
 
 metadata:
     product:
-        name: ls8_level2_force
-    properties:
-        eo:platform: landsat-8
-        eo:constellation: landsat-8
+        name: l8_ARD_30
+#    properties:
+#        eo:platform: landsat-8
+#        eo:constellation: landsat-8
 
 storage:
     crs: EPSG:25832

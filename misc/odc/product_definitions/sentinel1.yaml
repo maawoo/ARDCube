@@ -1,13 +1,13 @@
-name: s1_test_product
-description: Sentinel-1 test product
+name: s1_ARD_20
+description: Sentinel-1 A/B ARD - 20m
 metadata_type: eo3
 
 metadata:
     product:
-        name: s1_test_product
-    properties:
-        eo:platform: [ "sentinel-1a","sentinel-1b" ]
-        eo:constellation: sentinel-1
+        name: s1_ARD_20
+#    properties:
+#        eo:platform: ["sentinel-1a","sentinel-1b"]
+#        eo:constellation: sentinel-1
 
 storage:
     crs: EPSG:25832
