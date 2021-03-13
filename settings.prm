@@ -1,26 +1,26 @@
 [GENERAL]
 
 # Mandatory
-MainDirectory = /home/marco/pypypy/ARDCube_data
+DataDirectory = /home/marco/pypypy/ARDCube_data
 FilenameAOI = th_stripe.geojson
 FilenameDEM = None
-Timespan = 
+Timespan = 20200601,20200701
 Sentinel1 = True
 Sentinel2 = True
 Landsat8 = True
-SAROrbitDirection = ["asc", "desc"]
-OpticalCloudCoverRange = [0, 75]
+SAROrbitDirection = both
+OpticalCloudCoverRange = 0,75
 
 # Optional; Only if Sentinel-1 data should be downloaded from Copernicus Open Access Hub
-CopernicusUser = 
-CopernicusPassword = 
+#CopernicusUser = 
+#CopernicusPassword = 
 
 # Optional; Only if files are not located in /misc/aoi & /misc/dem
-PathAOI = 
-PathDEM =
+#PathAOI = 
+#PathDEM =
 
 ###############################################################################################
 
-[PROCESSING]
+#[PROCESSING]
 
 
