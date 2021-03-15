@@ -2,7 +2,7 @@ import configparser
 import os
 
 
-def get_settings(section=None):
+def get_settings(section=None, check=False):
     """Gets the path of the settings file, reads it, checks it and returns it as a ConfigParser object."""
 
     ## Get path of settings file. Ask for input, if not found in current work directory.
@@ -17,10 +17,12 @@ def get_settings(section=None):
     settings = configparser.ConfigParser()
     settings.read(s_path)
 
-    ## Check content of settings file
-    _check_settings(settings, s_path)
+    ## Check content of settings file only if parameter is set to True
+    ## The check will already be run once during module import (see last few lines of this script)
+    if check:
+        _check_settings(settings, s_path)
 
-    # Return either full settings or only a specific section
+    ## Return either full settings or only a specific section
     if section is None:
         return settings
     else:
@@ -30,7 +32,7 @@ def get_settings(section=None):
 def _check_settings(settings, path):
     """Helper function to check certain fields in the settings file."""
 
-    # TODO: Use something else then assert-statements? Apparently they should only be used during development.
+    ## TODO: Use something else then assert-statements? Apparently they should only be used during development.
 
     try:
         general = settings['GENERAL']
@@ -58,3 +60,8 @@ def _check_settings(settings, path):
 
     # assert fields in [PROCESSING]
     # ...
+
+
+## Do a check once during module import and leave it as optional afterwards.
+## This way it doesn't need to be executed all the time get_settings() is called.
+get_settings(check=True)
