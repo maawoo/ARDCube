@@ -1,22 +1,27 @@
+from ARDCube import read_settings
+
 import os
 from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
+from spython.main import Client
 from datetime import date
 import geojson
 import logging
 
-# logging.basicConfig(filename='sentinelsat.log', filemode='a', format='%(message)s', level='INFO')  # save to file
-# logging.basicConfig(format='%(message)s', level='INFO')  # print in console
+logging.basicConfig(filename='sentinelsat.log', filemode='a', format='%(message)s', level='INFO')  # save to file
+logging.basicConfig(format='%(message)s', level='INFO')  # print in console
+settings = read_settings.get_settings('GENERAL')
 
-############################################################
+####################
 
 maindir = '/home/marco/pypypy/pyro_test'
 s1_dir = os.path.join(maindir, 'S1')
-s2_dir = os.path.join(maindir, 'S2')
+
+####################
+
+aoi = settings['']
 aoi = os.path.join(maindir, 'misc', 'th_stripe.geojson')
 timespan = ('20200601', '20200604')
 s1_producttype = 'GRD'
-s2_producttype = 'S2MSI1C'
-s2_cloudcover = (0, 80)  # min, max (percentage)
 
 #############################################################
 
@@ -41,3 +46,11 @@ all_geojson = api.to_geojson(products)
 with open(all_path, 'w') as f:
     geojson.dump(all_geojson, f)
 """
+
+def force_download(settings):
+    """
+    force-level1-csd -s sensors -d daterange -c cloudcover metadata_dir level-1_dir queue.txt aoi-file
+    :return:
+    """
+
+    force_c = Client.instance(os.path.join(maindir, 'singularity/force', 'force.sif'), name='force_c')
