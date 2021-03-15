@@ -49,9 +49,20 @@ def download_s1(log=False):
                       platformname='Sentinel-1',
                       producttype='GRD')
 
-    print(f"{len(query)} scenes // {api.get_products_size(query)} GB total file size")
+    ## Print query information and ask user if download should be started or not.
+    while True:
+        answer = input(f"{len(query)} Sentinel-1 GRD files were found between {timespan[0]} and {timespan[1]} \n"
+                       f"for the AOI defined by \'{aoi_path}\'. \n"
+                       f"The total file size is {api.get_products_size(query)} GB \n"
+                       f"Do you want to proceed with the download? (y/n)")
+        if answer in ['y', 'yes', 'n', 'no']:
+            break
+        else:
+            print(f"{answer} is not a valid answer! \n ----------")
+            continue
 
-    api.download_all(query, directory_path=s1_dir)  # Download all queried products (s1)
+    if answer in ['y', 'yes']:
+        api.download_all(query, directory_path=s1_dir)
 
 
 #def force_download():
