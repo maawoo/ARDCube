@@ -7,9 +7,9 @@ def get_settings(section=None, check=False):
 
     ## Get path of settings file. Ask for input, if not found in current work directory.
     if 'settings.prm' not in os.listdir(os.getcwd()):
-        s_path = str(input(f'\'settings.prm\' could not be found in {os.getcwd()}.\n'
-                           f'Please provide the full path to your settings file '
-                           f'(e.g. \'/path/to/settings.prm\'): '))
+        s_path = str(input(f"\'settings.prm\' could not be found in {os.getcwd()}.\n"
+                           f"Please provide the full path to your settings file "
+                           f"(e.g. \'/path/to/settings.prm\'): "))
     else:
         s_path = os.path.join(os.getcwd(), 'settings.prm')
 
@@ -40,7 +40,7 @@ def _check_settings(settings, path):
         raise KeyError(f"Can\'t find section \'GENERAL\' in settings file: {path}")
 
     assert os.path.isdir(general['DataDirectory']), f"Field \'DataDirectory\': " \
-                                                    f"'{general['DataDirectory']} is not a valid path!"
+                                                    f"{general['DataDirectory']} is not a valid path!"
     # assert FilenameAOI / PathAOI
     # assert FilenameDEM / PathDEM
     # assert Timespan
@@ -51,11 +51,9 @@ def _check_settings(settings, path):
         except ValueError:
             raise ValueError(f"Field \'{sensor}\': Must be a boolean!")
 
-    assert general['SAROrbitDirection'] == 'both' or 'asc' or 'desc', f"Field \'SAROrbitDirection\': " \
-                                                                      f"{general['SAROrbitDirection']} " \
-                                                                      f"is not a valid option!" \
-                                                                      f"\n Valid options are: " \
-                                                                      f"\'asc\', \'desc\' or \'both\'."
+    assert general['SAROrbitDirection'] is None or 'asc' or 'desc', f"Field \'SAROrbitDirection\': " \
+                                                                    f"{general['SAROrbitDirection']} " \
+                                                                    f"is not a valid option!"
     # assert OpticalCloudCoverRange
 
     # assert fields in [PROCESSING]
