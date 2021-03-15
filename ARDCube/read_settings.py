@@ -2,7 +2,7 @@ import configparser
 import os
 
 
-def get_settings():
+def get_settings(section=None):
     """Gets the path of the settings file, reads it, checks it and returns it as a ConfigParser object."""
 
     ## Get path of settings file. Ask for input, if not found in current work directory.
@@ -18,33 +18,43 @@ def get_settings():
     settings.read(s_path)
 
     ## Check content of settings file
-    check_settings(settings, s_path)
+    _check_settings(settings, s_path)
 
-    return settings
+    # Return either full settings or only a specific section
+    if section is None:
+        return settings
+    else:
+        return settings[section]
 
 
-def check_settings(settings, path):
+def _check_settings(settings, path):
     """Helper function to check certain fields in the settings file."""
+
+    # TODO: Use something else then assert-statements? Apparently they should only be used during development.
 
     try:
         general = settings['GENERAL']
     except KeyError:
-        print(f'Can\'t find section \'[GENERAL]\' in settings file: {path}')
+        raise KeyError(f"Can\'t find section \'GENERAL\' in settings file: {path}")
 
-    assert os.path.isdir(general['DataDirectory']), f"{general['DataDirectory']} is not a valid path!"
+    assert os.path.isdir(general['DataDirectory']), f"Field \'DataDirectory\': " \
+                                                    f"'{general['DataDirectory']} is not a valid path!"
     # assert FilenameAOI / PathAOI
     # assert FilenameDEM / PathDEM
     # assert Timespan
-    general.getboolean('Sentinel1')
-    general.getboolean('Sentinel2')
-    general.getboolean('Landsat8')
-    assert general['SAROrbitDirection'] == 'both' or 'asc' or 'desc', f"{general['SAROrbitDirection']} is not a valid" \
-                                                                      f" option for the field \'SAROrbitDirection\'!" \
+
+    for sensor in ['Sentinel1', 'Sentinel2', 'Landsat8']:
+        try:
+            general.getboolean(sensor)
+        except ValueError:
+            raise ValueError(f"Field \'{sensor}\': Must be a boolean!")
+
+    assert general['SAROrbitDirection'] == 'both' or 'asc' or 'desc', f"Field \'SAROrbitDirection\': " \
+                                                                      f"{general['SAROrbitDirection']} " \
+                                                                      f"is not a valid option!" \
                                                                       f"\n Valid options are: " \
                                                                       f"\'asc\', \'desc\' or \'both\'."
     # assert OpticalCloudCoverRange
 
     # assert fields in [PROCESSING]
     # ...
-
-    # return something?
