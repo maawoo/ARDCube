@@ -14,7 +14,7 @@ def get_settings(section=None, check=False):
         s_path = os.path.join(os.getcwd(), 'settings.prm')
 
     ## Read settings file
-    settings = configparser.ConfigParser()
+    settings = configparser.ConfigParser(allow_no_value=True)
     settings.read(s_path)
 
     ## Check content of settings file only if parameter is set to True
