@@ -1,25 +1,40 @@
+## Notes:
+## - Don't use 'something' or "something" for input. Everything will be parsed as strings by default!
+## - ...
+
 [GENERAL]
 
-# Mandatory
+## bla
 DataDirectory = /home/marco/pypypy/ARDCube_data
-FilenameAOI = th_stripe.geojson
-FilenameDEM = None
-Timespan = 20200601,20200701
+
+## Can either be a filename (e.g. 'aoi.geojson') or a full path (e.g. '/path/to/aoi.geojson').
+## If only a filename is provided, it is assumed to be located in the subdirectory '/DataDirectory/misc/aoi'.
+AOI = th_stripe.geojson
+
+## Same as the AOI field, but the file is assumed to be located in the subdirectory '/DataDirectory/misc/dem' instead,
+## if only a filename is provided.
+## If no DEM has been prepared beforehand, 'srtm' can be used as an input. This will automatically create a 30m SRTM DEM
+## and use '/DataDirectory/misc/dem' as the output directory.
+DEM = srtm
+
+## bla
 Sentinel1 = True
 Sentinel2 = True
 Landsat8 = True
-SAROrbitDirection = both
-OpticalCloudCoverRange = 0,75
+TimespanMin = 20200601
+TimespanMax = 20200701
+OpticalCloudCoverRangeMin = 0
+OpticalCloudCoverRangeMax = 75
 
-# Optional; Only if Sentinel-1 data should be downloaded from Copernicus Open Access Hub
-#CopernicusUser = 
-#CopernicusPassword = 
+## This field can (and should) be left empty if both ascending and descending directions should be queried. Otherwise
+## you can use 'asc' (= ascending orbit) or 'desc' (= descending orbit) to specify.
+SAROrbitDirection =
 
-# Optional; Only if files are not located in /misc/aoi & /misc/dem
-#PathAOI = 
-#PathDEM =
+## Sentinel-1 data will be downloaded from Copernicus Open Access Hub using the Python package sentinelsat, if the field
+## 'Sentinel1' is set to True. In this case credentials are required.
+CopernicusUser =
+CopernicusPassword =
 
-###############################################################################################
 
 #[PROCESSING]
 
