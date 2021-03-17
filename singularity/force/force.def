@@ -1,2 +1,4 @@
 Bootstrap: docker
 From: davidfrantz/force
+
+## TODO: Upgrade and test v3.6.4 - Dockerfile changes!!

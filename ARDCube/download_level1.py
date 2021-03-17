@@ -11,7 +11,7 @@ def download_level1():
     """Main download script."""
 
     ## Get user defined settings
-    settings = get_settings(section='GENERAL')
+    settings = get_settings()
 
     ## Check which datasets should be downloaded based on settings.
     ## TODO: Make settings file and code more flexible, so it's easier to add other sensors (e.g. Landsat!).

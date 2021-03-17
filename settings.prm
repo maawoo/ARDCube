@@ -7,12 +7,14 @@ DataDirectory = /home/marco/pypypy/ARDCube_data
 
 ## Can either be a filename (e.g. 'aoi.geojson') or a full path (e.g. '/path/to/aoi.geojson').
 ## If only a filename is provided, it is assumed to be located in the subdirectory '/DataDirectory/misc/aoi'.
+## GeoJSON, GPKG and Shapefile should all work. http://geojson.io provides a convenient way to create a GeoJSON file.
 AOI = th_stripe.geojson
 
-## Same as the AOI field, but the file is assumed to be located in the subdirectory '/DataDirectory/misc/dem' instead,
-## if only a filename is provided.
-## If no DEM has been prepared beforehand, 'srtm' can be used as an input. This will automatically create a 30m SRTM DEM
-## and use '/DataDirectory/misc/dem' as the output directory.
+## Can either be a filename (e.g. 'dem.tif') or a full path (e.g. '/path/to/dem.tif').
+## If only a filename is provided, it is assumed to be located in the subdirectory '/DataDirectory/misc/dem'.
+## FORCE documentation on how to prepare a DEM: https://force-eo.readthedocs.io/en/latest/howto/dem.html
+## You can also use 'srtm' as an input. This will automatically create a 1 arc-second (30 meters) SRTM DEM for the
+## area of interest and use '/DataDirectory/misc/dem' as the output directory.
 DEM = srtm
 
 ##
