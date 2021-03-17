@@ -22,18 +22,18 @@ def download_level1():
                              sat_dict=sat_dict)
 
     if 'Sentinel1' in list(sats.keys()):
-        print("#### Starting download script for Sentinel-1...")
+        print("#### \nStarting download script for Sentinel-1... \n####")
         download_sar(settings=settings,
                      out_dir=sats['Sentinel1'][2])
 
     if 'Sentinel2' in list(sats.keys()):
-        print("#### Starting download script for Sentinel-2...")
+        print("#### \nStarting download script for Sentinel-2... \n####")
         download_optical(settings=settings,
                          out_dir=sats['Sentinel2'][2],
                          force_abbr=sats['Sentinel2'][1])
 
     if 'Landsat8' in list(sats.keys()):
-        print("#### Starting download script for Landsat 8...")
+        print("#### \nStarting download script for Landsat 8... \n####")
         download_optical(settings=settings,
                          out_dir=sats['Landsat8'][2],
                          force_abbr=sats['Landsat8'][1])
@@ -119,6 +119,12 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
 
     ## Start download only if confirmed by user
     if answer in ['y', 'yes']:
+        print("\n#### \nStarting download... \n"
+              "Depending on the dataset size and your internet speed, this might take a while. \n"
+              "Unfortunately there's currently no good solution to show the download progress. \n"
+              "If the download takes longer than you intended, you can just cancel the process and start it again \n"
+              "at a later time using the same settings in the settings.prm file. \n"
+              "FORCE checks for existing scenes and will only download new scenes!")
         Client.execute(force_path, ["force-level1-csd", "-s", sensors, "-d", daterange,
                                     "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
                        options=["--cleanenv"])
