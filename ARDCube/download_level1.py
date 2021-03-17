@@ -47,7 +47,7 @@ def download_sar(settings, out_dir, log=False):
 
     ## https://sentinelsat.readthedocs.io/en/stable/api.html#logging
     if log:
-        filename = os.path.join(settings['DataDirectory'], 'log',
+        filename = os.path.join(settings['GENERAL']['DataDirectory'], 'log',
                                 f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S__download_s1')}.log")
         logging.basicConfig(filename=filename, filemode='w', format='%(message)s', level='INFO')
 
@@ -56,11 +56,11 @@ def download_sar(settings, out_dir, log=False):
     footprint = geojson_to_wkt(read_geojson(aoi_path))
 
     ## Get timespan
-    timespan = (settings['TimespanMin'], settings['TimespanMax'])
+    timespan = (settings['DOWNLOAD']['TimespanMin'], settings['DOWNLOAD']['TimespanMax'])
 
     ## Connect to Copernicus Open Access Hub using provided credentials.
     ## The API defaults to https://scihub.copernicus.eu/apihub
-    api = SentinelAPI(settings['CopernicusUser'], settings['CopernicusPassword'])
+    api = SentinelAPI(settings['DOWNLOAD']['CopernicusUser'], settings['DOWNLOAD']['CopernicusPassword'])
 
     ## Perform a query using provided parameters
     query = api.query(footprint,
@@ -90,9 +90,11 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
     """
 
     sensors = force_abbr
-    daterange = f"{settings['TimespanMin']},{settings['TimespanMax']}"
-    cloudcover = f"{settings['OpticalCloudCoverRangeMin']},{settings['OpticalCloudCoverRangeMax']}"
-    meta_dir = os.path.join(settings['DataDirectory'], 'meta/force')
+    daterange = f"{settings['DOWNLOAD']['TimespanMin']}," \
+                f"{settings['DOWNLOAD']['TimespanMax']}"
+    cloudcover = f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMin']}," \
+                 f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMax']}"
+    meta_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'meta/force')
     aoi_path = _get_aoi_path(settings)
 
     force_path = _get_force_path()
@@ -133,10 +135,10 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
 def _get_aoi_path(settings):
     """Gets the full path to the AOI file based on settings."""
 
-    if os.path.isdir(settings['AOI']):
-        aoi_path = settings['AOI']
+    if os.path.isdir(settings['GENERAL']['AOI']):
+        aoi_path = settings['GENERAL']['AOI']
     else:
-        aoi_path = os.path.join(settings['DataDirectory'], 'misc/aoi', settings['AOI'])
+        aoi_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/aoi', settings['GENERAL']['AOI'])
 
     return aoi_path
 
@@ -152,7 +154,7 @@ def _get_sat_settings(settings, sat_dict):
             s_full = sat
             s_short = sat_dict[sat][0]
             force_abbr = sat_dict[sat][1]
-            out_dir = os.path.join(settings['DataDirectory'], f"level-1/{s_short}")
+            out_dir = os.path.join(settings['GENERAL']['DataDirectory'], f"level-1/{s_short}")
 
             dict_out[s_full] = [s_short, force_abbr, out_dir]
 
@@ -164,6 +166,8 @@ def _get_sat_settings(settings, sat_dict):
 
 def _get_force_path():
     """Gets the full path to the FORCE Singularity container (force.sif)."""
+
+    ## TODO: Move this to an auxiliary module? Need to get the path during processing as well...
 
     ## Ask for input, if not found in expected directory (/cwd/singularity/force).
     force_dir = os.path.join(os.getcwd(), 'singularity/force')

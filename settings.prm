@@ -1,10 +1,8 @@
-## Notes:
-## - Don't use 'something' or "something" for input. Everything will be parsed as strings by default!
-## - ...
-
 [GENERAL]
+## Settings that will be used throughout the project.
 
-## bla
+## Main directory that will contain downloaded and processed datasets, metadata, auxillary data (e.g. DEM), etc.
+## This directory can be empty at the beginning. The scripts will create subdirectories as necessary.
 DataDirectory = /home/marco/pypypy/ARDCube_data
 
 ## Can either be a filename (e.g. 'aoi.geojson') or a full path (e.g. '/path/to/aoi.geojson').
@@ -17,25 +15,29 @@ AOI = th_stripe.geojson
 ## and use '/DataDirectory/misc/dem' as the output directory.
 DEM = srtm
 
-## bla
+##
 Sentinel1 = True
-Sentinel2 = True
+Sentinel2 = False
 Landsat8 = True
+
+[DOWNLOAD]
+## Settings that will only be used for downloading datasets.
+
 TimespanMin = 20200601
-TimespanMax = 20200701
+TimespanMax = 20200605
 OpticalCloudCoverRangeMin = 0
 OpticalCloudCoverRangeMax = 75
 
-## This field can (and should) be left empty if both ascending and descending directions should be queried. Otherwise
+## This field should be left empty if both ascending and descending directions should be queried. Otherwise
 ## you can use 'asc' (= ascending orbit) or 'desc' (= descending orbit) to specify.
 SAROrbitDirection =
 
 ## Sentinel-1 data will be downloaded from Copernicus Open Access Hub using the Python package sentinelsat, if the field
-## 'Sentinel1' is set to True. In this case credentials are required.
-CopernicusUser =
+## 'Sentinel1' is set to True. In this case your account credentials are required.
+## If you don't have an account, you can register here: https://scihub.copernicus.eu/dhus/#/self-registration
+CopernicusUser = maawoo
 CopernicusPassword =
 
-
-#[PROCESSING]
-
+[PROCESSING]
+## Settings that will only be used for processing datasets.
 
