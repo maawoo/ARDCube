@@ -1,4 +1,5 @@
 from ARDCube.read_settings import get_settings
+from ARDCube.auxiliary.aux import get_aoi_path, get_force_path
 
 import os
 import logging
@@ -52,7 +53,7 @@ def download_sar(settings, out_dir, log=False):
         logging.basicConfig(filename=filename, filemode='w', format='%(message)s', level='INFO')
 
     ## Get footprint from AOI
-    aoi_path = _get_aoi_path(settings)
+    aoi_path = get_aoi_path(settings)
     footprint = geojson_to_wkt(read_geojson(aoi_path))
 
     ## Get timespan
@@ -95,9 +96,9 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
     cloudcover = f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMin']}," \
                  f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMax']}"
     meta_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'meta/force')
-    aoi_path = _get_aoi_path(settings)
+    aoi_path = get_aoi_path(settings)
 
-    force_path = _get_force_path()
+    force_path = get_force_path()
     Client.debug = debug
 
     output = Client.execute(force_path, ["force-level1-csd", "--no-act", "-s", sensors, "-d", daterange,
@@ -132,17 +133,6 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
                        options=["--cleanenv"])
 
 
-def _get_aoi_path(settings):
-    """Gets the full path to the AOI file based on settings."""
-
-    if os.path.isdir(settings['GENERAL']['AOI']):
-        aoi_path = settings['GENERAL']['AOI']
-    else:
-        aoi_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/aoi', settings['GENERAL']['AOI'])
-
-    return aoi_path
-
-
 def _get_sat_settings(settings, sat_dict):
     """Creates a dictionary based on which satellite fields were set to True in settings file."""
 
@@ -162,20 +152,3 @@ def _get_sat_settings(settings, sat_dict):
                 os.makedirs(out_dir)
 
     return dict_out
-
-
-def _get_force_path():
-    """Gets the full path to the FORCE Singularity container (force.sif)."""
-
-    ## TODO: Move this to an auxiliary module? Need to get the path during processing as well...
-
-    ## Ask for input, if not found in expected directory (/cwd/singularity/force).
-    force_dir = os.path.join(os.getcwd(), 'singularity/force')
-    if 'force.sif' not in os.listdir(force_dir):
-        force_path = input(f"\'force.sif\' could not be found in \'{force_dir}\'.\n"
-                           f"Please provide the full path to \'force.sif\' "
-                           f"(e.g. \'/path/to/force.sif\'): ")
-    else:
-        force_path = os.path.join(force_dir, 'force.sif')
-
-    return force_path
