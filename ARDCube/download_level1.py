@@ -1,5 +1,6 @@
+from ARDCube.config import FORCE_PATH
 from ARDCube.read_settings import get_settings
-from ARDCube.auxiliary.aux import get_aoi_path, get_force_path
+from ARDCube.auxiliary.aux import get_aoi_path
 
 import os
 import logging
@@ -98,10 +99,9 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
     meta_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'meta/force')
     aoi_path = get_aoi_path(settings)
 
-    force_path = get_force_path()
     Client.debug = debug
 
-    output = Client.execute(force_path, ["force-level1-csd", "--no-act", "-s", sensors, "-d", daterange,
+    output = Client.execute(FORCE_PATH, ["force-level1-csd", "--no-act", "-s", sensors, "-d", daterange,
                                          "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
                             options=["--cleanenv"])
 
@@ -128,7 +128,7 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
               "If the download takes longer than you intended, you can just cancel the process and start it again \n"
               "at a later time using the same settings in the settings.prm file. \n"
               "FORCE checks for existing scenes and will only download new scenes!")
-        Client.execute(force_path, ["force-level1-csd", "-s", sensors, "-d", daterange,
+        Client.execute(FORCE_PATH, ["force-level1-csd", "-s", sensors, "-d", daterange,
                                     "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
                        options=["--cleanenv"])
 
