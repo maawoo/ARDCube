@@ -1,3 +1,5 @@
+from ARDCube.config import ROOT_DIR
+
 import configparser
 import os
 
@@ -6,12 +8,12 @@ def get_settings(check=False):
     """Gets the path of the settings file, reads it, checks it and returns it as a ConfigParser object."""
 
     ## Get path of settings file. Ask for input, if not found in current work directory.
-    if 'settings.prm' not in os.listdir(os.getcwd()):
-        s_path = input(f"\'settings.prm\' could not be found in {os.getcwd()}.\n"
+    if 'settings.prm' not in os.listdir(ROOT_DIR):
+        s_path = input(f"\'settings.prm\' could not be found in {ROOT_DIR}.\n"
                        f"Please provide the full path to your settings file "
                        f"(e.g. \'/path/to/settings.prm\'): ")
     else:
-        s_path = os.path.join(os.getcwd(), 'settings.prm')
+        s_path = os.path.join(ROOT_DIR, 'settings.prm')
 
     ## Read settings file
     settings = configparser.ConfigParser(allow_no_value=True)
