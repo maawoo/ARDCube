@@ -1,0 +1,111 @@
+++PARAM_LEVEL2_START++
+
+# This is the DEFAULT parameter file used to process level 2 Analysis Ready Data using FORCE.
+# All fields that use FILL as input, will be modified by the ARDCube scripts using information
+# that was provided in the settings.prm file. 
+
+# If you want to customize the processing parameters, you can use the FORCE_custom.prm file, which 
+# will automatically be used if you change the field 'UseDefault' in settings.prm to False.
+
+# You can find a more detailed description of the parameters in FORCE_parameter_description.prm. 
+# More information on the level 2 processing can be found in the FORCE docs:
+# https://force-eo.readthedocs.io/en/latest/howto/l2-ard.html#tut-ard
+
+# INPUT/OUTPUT DIRECTORIES
+# ------------------------------------------------------------------------
+FILE_QUEUE = FILL
+DIR_LEVEL2 = FILL
+DIR_LOG = FILL
+DIR_TEMP = FILL
+
+# DIGITAL ELEVATION MODEL
+# ------------------------------------------------------------------------
+FILE_DEM = FILL
+DEM_NODATA = FILL
+
+# DATA CUBES
+# Note that ORIGIN_LAT, ORIGIN_LON, TILE_SIZE, and BLOCK_SIZE will be ignored if GLANCE7
+# or EQUI7 are chosen for PROJECTION, as they use predefined values.  
+# https://force-eo.readthedocs.io/en/latest/howto/datacube.html#how-to-define-the-datacube-parameters
+# ------------------------------------------------------------------------
+DO_REPROJ = TRUE
+DO_TILE = TRUE
+FILE_TILE = NULL
+TILE_SIZE = 30000
+BLOCK_SIZE = 3000
+RESOLUTION_LANDSAT = 30
+RESOLUTION_SENTINEL2 = 10
+ORIGIN_LON = -25
+ORIGIN_LAT = 60
+PROJECTION = GLANCE7
+RESAMPLING = CC
+
+# RADIOMETRIC CORRECTION OPTIONS
+# ------------------------------------------------------------------------
+DO_ATMO = TRUE
+DO_TOPO = TRUE
+DO_BRDF = TRUE
+ADJACENCY_EFFECT = TRUE
+MULTI_SCATTERING = TRUE
+
+# WATER VAPOR CORRECTION OPTIONS
+# ------------------------------------------------------------------------
+DIR_WVPLUT = NULL
+WATER_VAPOR = NULL
+
+# AEROSOL OPTICAL DEPTH OPTIONS
+# ------------------------------------------------------------------------
+DO_AOD  = TRUE
+DIR_AOD  = NULL
+
+# CLOUD DETECTION OPTIONS
+# ------------------------------------------------------------------------
+ERASE_CLOUDS = FALSE
+MAX_CLOUD_COVER_FRAME = 75
+MAX_CLOUD_COVER_TILE  = 75
+CLOUD_BUFFER  = 300
+SHADOW_BUFFER = 90
+SNOW_BUFFER   = 30
+CLOUD_THRESHOLD  = 0.225
+SHADOW_THRESHOLD = 0.02
+
+# RESOLUTION MERGING
+# ------------------------------------------------------------------------
+RES_MERGE = IMPROPHE
+
+# CO-REGISTRATION OPTIONS
+# ------------------------------------------------------------------------
+DIR_COREG_BASE = NULL
+COREG_BASE_NODATA = -9999
+
+# MISCELLANEOUS OPTIONS
+# ------------------------------------------------------------------------
+IMPULSE_NOISE = TRUE
+BUFFER_NODATA = FALSE
+
+# TIER LEVEL
+# ------------------------------------------------------------------------
+TIER = 1
+
+# PARALLEL PROCESSING
+# ------------------------------------------------------------------------
+# Multiprocessing options (NPROC, DELAY) only apply when using the batch
+# utility force-level2. They are not used by the core function force-l2ps.
+# ------------------------------------------------------------------------
+NPROC = FILL
+NTHREAD = FILL
+PARALLEL_READS = FALSE
+DELAY = 3
+TIMEOUT_ZIP = 30
+
+# OUTPUT OPTIONS
+# ------------------------------------------------------------------------
+OUTPUT_FORMAT = GTiff
+OUTPUT_DST = FALSE
+OUTPUT_AOD = FALSE
+OUTPUT_WVP = FALSE
+OUTPUT_VZN = FALSE
+OUTPUT_HOT = FALSE
+OUTPUT_OVV = FALSE
+
+++PARAM_LEVEL2_END++
