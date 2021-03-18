@@ -1,6 +1,6 @@
 from ARDCube.config import FORCE_PATH
 from ARDCube.read_settings import get_settings
-from ARDCube.auxiliary.aux import get_aoi_path
+from ARDCube.auxiliary.aux import get_aoi_path, check_sat_settings
 
 import os
 import logging
@@ -17,11 +17,8 @@ def download_level1():
 
     ## Check which datasets should be downloaded based on settings.
     ## TODO: Make settings file and code more flexible, so it's easier to add other sensors (e.g. Landsat!).
-    sat_dict = {'Sentinel1': ['S1', ''],
-                'Sentinel2': ['S2', 'S2A,S2B'],
-                'Landsat8': ['L8', 'LC08']}
-    sats = _get_sat_settings(settings=settings,
-                             sat_dict=sat_dict)
+
+    sats = check_sat_settings(settings=settings)
 
     if 'Sentinel1' in list(sats.keys()):
         print("#### \nStarting download script for Sentinel-1... \n####")
@@ -131,24 +128,3 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
         Client.execute(FORCE_PATH, ["force-level1-csd", "-s", sensors, "-d", daterange,
                                     "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
                        options=["--cleanenv"])
-
-
-def _get_sat_settings(settings, sat_dict):
-    """Creates a dictionary based on which satellite fields were set to True in settings file."""
-
-    dict_out = {}
-
-    for sat in list(sat_dict.keys()):
-        if settings.getboolean(sat):
-
-            s_full = sat
-            s_short = sat_dict[sat][0]
-            force_abbr = sat_dict[sat][1]
-            out_dir = os.path.join(settings['GENERAL']['DataDirectory'], f"level-1/{s_short}")
-
-            dict_out[s_full] = [s_short, force_abbr, out_dir]
-
-            if not os.path.exists(out_dir):
-                os.makedirs(out_dir)
-
-    return dict_out
