@@ -1,4 +1,7 @@
+from ARDCube.config import ROOT_DIR, PYROSAR_PATH
+
 import os
+from spython.main import Client
 
 
 def get_aoi_path(settings):
@@ -43,3 +46,19 @@ def check_sat_settings(settings):
                 os.makedirs(out_dir)
 
     return dict_out
+
+
+def create_dem(settings):
+    """..."""
+
+    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/auxiliary/dem.py')
+    aoi_path = get_aoi_path(settings)
+
+    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{out_dir}"],
+                   options=["--cleanenv"])
+
+    return os.path.join(out_dir, 'srtm.tif')
