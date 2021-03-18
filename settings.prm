@@ -17,6 +17,9 @@ AOI = th_stripe.geojson
 ## area of interest and use '/DataDirectory/misc/dem' as the output directory.
 DEM = srtm
 
+## If you use 'srtm' in the field above, you can leave the value '-32768'. Otherwise adjust it.  
+DEM_NoData = -32768
+
 ##
 Sentinel1 = True
 Sentinel2 = False
@@ -43,3 +46,7 @@ CopernicusPassword =
 [PROCESSING]
 ## Settings that will only be used for processing datasets.
 
+UseDefault = True
+
+NPROC = 2
+NTHREAD = 4
