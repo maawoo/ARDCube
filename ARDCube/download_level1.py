@@ -9,43 +9,41 @@ from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 from spython.main import Client
 
 
-def download_level1():
+def download_level1(log_sentinelsat=False, debug_force=False):
     """Main download script."""
 
     ## Get user defined settings
     settings = get_settings()
 
-    ## Check which datasets should be downloaded based on settings.
-    ## TODO: Make settings file and code more flexible, so it's easier to add other sensors (e.g. Landsat!).
-
+    ## Check which satellite sensors were selected (= True) in the settings.prm file and create dictionary with
+    ## a few useful values (abbreviation used in FORCE, directory to store downloaded scenes, ...)
     sats = check_sat_settings(settings=settings)
 
-    if 'Sentinel1' in list(sats.keys()):
-        print("#### \nStarting download script for Sentinel-1... \n####")
-        download_sar(settings=settings,
-                     out_dir=sats['Sentinel1'][2])
+    ## Start download functions
+    ## Both functions print query information first and then ask for confirmation to start the download.
+    for sat in list(sats.keys()):
+        print(f"#### \nStarting download script for {sat}...")
 
-    if 'Sentinel2' in list(sats.keys()):
-        print("#### \nStarting download script for Sentinel-2... \n####")
-        download_optical(settings=settings,
-                         out_dir=sats['Sentinel2'][2],
-                         force_abbr=sats['Sentinel2'][1])
-
-    if 'Landsat8' in list(sats.keys()):
-        print("#### \nStarting download script for Landsat 8... \n####")
-        download_optical(settings=settings,
-                         out_dir=sats['Landsat8'][2],
-                         force_abbr=sats['Landsat8'][1])
+        if sat == 'Sentinel1':
+            download_sar(settings=settings,
+                         out_dir=sats[sat]['level1_dir'],
+                         log_sentinelsat=log_sentinelsat)
+        else:
+            download_optical(settings=settings,
+                             out_dir=sats[sat]['level1_dir'],
+                             force_abbr=sats[sat]['force_abbr'],
+                             debug_force=debug_force)
 
 
-def download_sar(settings, out_dir, log=False):
+def download_sar(settings, out_dir, log_sentinelsat=False):
     """Download Sentinel-1 GRD data from Copernicus Open Access Hub based on parameters defined in 'settings.prm'.
     https://github.com/sentinelsat/sentinelsat
     """
-    ## TODO: Include SAROrbitDirection
+    ## TODO: Include SAROrbitDirection to query only ascending/descending scenes
 
+    ## Optionally store sentinelsat logging information in '/DataDirectory/log'
     ## https://sentinelsat.readthedocs.io/en/stable/api.html#logging
-    if log:
+    if log_sentinelsat:
         filename = os.path.join(settings['GENERAL']['DataDirectory'], 'log',
                                 f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S__download_s1')}.log")
         logging.basicConfig(filename=filename, filemode='w', format='%(message)s', level='INFO')
@@ -83,11 +81,14 @@ def download_sar(settings, out_dir, log=False):
         api.download_all(query, directory_path=out_dir)
 
 
-def download_optical(settings, out_dir, force_abbr, debug=False):
+def download_optical(settings, out_dir, force_abbr, debug_force=False):
     """Download optical satellite data from Google Cloud Storage based on parameters defined in 'settings.prm'.
     https://force-eo.readthedocs.io/en/latest/howto/level1-csd.html#tut-l1csd
     """
 
+    ## TODO: Check if metadata catalogues exist and if not download them first!
+
+    ## Collect all information that will be used in the query
     sensors = force_abbr
     daterange = f"{settings['DOWNLOAD']['TimespanMin']}," \
                 f"{settings['DOWNLOAD']['TimespanMax']}"
@@ -96,19 +97,20 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
     meta_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'meta/force')
     aoi_path = get_aoi_path(settings)
 
-    Client.debug = debug
-
+    ## Send query to FORCE Singularity container as dry run first ("--no-act") and print query information
+    Client.debug = debug_force
     output = Client.execute(FORCE_PATH, ["force-level1-csd", "--no-act", "-s", sensors, "-d", daterange,
                                          "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
                             options=["--cleanenv"])
 
-    ## Print query information for dry run ("--no-act") first and then ask user if download should be started or not.
-    if debug:
+    if debug_force:
         for line in output:
             print(line)
     else:
         print(output)
 
+    ## Ask user if download should actually be started.
+    ## Same command as above will be send to container, but without the "--no-act" flag
     while True:
         answer = input(f"Do you want to proceed with the download? (y/n)")
         if answer in ['y', 'yes', 'n', 'no']:
@@ -117,7 +119,6 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
             print(f"{answer} is not a valid answer! \n ----------")
             continue
 
-    ## Start download only if confirmed by user
     if answer in ['y', 'yes']:
         print("\n#### \nStarting download... \n"
               "Depending on the dataset size and your internet speed, this might take a while. \n"
@@ -125,6 +126,7 @@ def download_optical(settings, out_dir, force_abbr, debug=False):
               "If the download takes longer than you intended, you can just cancel the process and start it again \n"
               "at a later time using the same settings in the settings.prm file. \n"
               "FORCE checks for existing scenes and will only download new scenes!")
+
         Client.execute(FORCE_PATH, ["force-level1-csd", "-s", sensors, "-d", daterange,
                                     "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
                        options=["--cleanenv"])

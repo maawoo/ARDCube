@@ -22,7 +22,10 @@ DEM_NoData = -32768
 
 ##
 Sentinel1 = True
-Sentinel2 = False
+Sentinel2 = True
+Landsat4 = False
+Landsat5 = False
+Landsat7 = False
 Landsat8 = True
 
 [DOWNLOAD]
@@ -46,7 +49,9 @@ CopernicusPassword =
 [PROCESSING]
 ## Settings that will only be used for processing datasets.
 
+##
 UseDefault = True
 
-NPROC = 2
+##
+NPROC = 1
 NTHREAD = 4

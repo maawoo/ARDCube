@@ -8,10 +8,10 @@ def get_aoi_path(settings):
     """Gets the full path to the AOI file based on settings."""
 
     if os.path.isfile(settings['GENERAL']['AOI']):
-        ## Is full path already and file exists!
+        ## Full path provided and file exists! Whoop!
         aoi_path = settings['GENERAL']['AOI']
     else:
-        ## Is filename only, so it is assumed to be located in the subdirectory '/DataDirectory/misc/aoi'
+        ## Filename provided only, which is assumed to be located in the subdirectory '/DataDirectory/misc/aoi'
         ## as described in settings.prm!
         aoi_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/aoi',
                                 settings['GENERAL']['AOI'])
@@ -27,23 +27,33 @@ def get_aoi_path(settings):
 def check_sat_settings(settings):
     """Creates a dictionary based on which satellite fields were set to True in settings file."""
 
-    sat_dict = {'Sentinel1': ['S1', '-'],
-                'Sentinel2': ['S2', 'S2A,S2B'],
-                'Landsat8': ['L8', 'LC08']}
+    ## Key = Satellite sensor name as listed in settings.prm
+    ## Value = Abbreviation used in FORCE download module
+    sat_dict = {'Sentinel1': None,
+                'Sentinel2': 'S2A,S2B',
+                'Landsat4': 'LT04',
+                'Landsat5': 'LT05',
+                'Landsat7': 'LE07',
+                'Landsat8': 'LC08'}
 
     dict_out = {}
     for sat in list(sat_dict.keys()):
         if settings.getboolean(sat):
 
-            s_full = sat
-            s_short = sat_dict[sat][0]
-            force_abbr = sat_dict[sat][1]
-            out_dir = os.path.join(settings['GENERAL']['DataDirectory'], f"level-1/{s_short}")
+            ## Define dict content and create entry
+            force_abbr = sat_dict[sat]
+            level1_dir = os.path.join(settings['GENERAL']['DataDirectory'], f"level1/{sat}")
+            level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], f"level2/{sat}")
 
-            dict_out[s_full] = [s_short, force_abbr, out_dir]
+            dict_out[sat] = {'force_abbr': force_abbr,
+                             'level1_dir': level1_dir,
+                             'level2_dir': level2_dir}
 
-            if not os.path.exists(out_dir):
-                os.makedirs(out_dir)
+            ## Create directories for level1 (download) and level2 (processing) if they don't exist already
+            if not os.path.exists(level1_dir):
+                os.makedirs(level1_dir)
+            if not os.path.exists(level2_dir):
+                os.makedirs(level2_dir)
 
     return dict_out
 

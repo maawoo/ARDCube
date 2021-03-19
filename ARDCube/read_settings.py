@@ -37,11 +37,11 @@ def _check_settings(settings):
         f"Field \'DataDirectory\': {settings['GENERAL']['DataDirectory']} is not a valid path!"
     # assert AOI?
     # assert DEM?
-    for sensor in ['Sentinel1', 'Sentinel2', 'Landsat8']:
+    for sensor in ['Sentinel1', 'Sentinel2', 'Landsat4', 'Landsat5', 'Landsat7', 'Landsat8']:
         try:
             settings.getboolean('GENERAL', sensor)
         except ValueError:
-            raise ValueError(f"Field \'{sensor}\': Must be a boolean!")
+            raise ValueError(f"Field \'{sensor}\': Must be a boolean (True/False)!")
 
     ## ['DOWNLOAD']
     # assert Timespan
