@@ -68,17 +68,20 @@ def download_sar(settings, out_dir, log_sentinelsat=False):
     ## Print query information and ask user if download should be started or not.
     while True:
         answer = input(f"{len(query)} Sentinel-1 GRD files were found between {timespan[0]} and {timespan[1]} \n"
-                       f"for the AOI defined by \'{aoi_path}\'. \n"
+                       f"for the AOI defined by '{aoi_path}'. \n"
                        f"The total file size is {api.get_products_size(query)} GB \n"
                        f"Do you want to proceed with the download? (y/n)")
-        if answer in ['y', 'yes', 'n', 'no']:
+
+        if answer in ['y', 'yes']:
+            api.download_all(query, directory_path=out_dir)
             break
+
+        elif answer in ['n', 'no']:
+            break
+
         else:
             print(f"{answer} is not a valid answer! \n ----------")
             continue
-
-    if answer in ['y', 'yes']:
-        api.download_all(query, directory_path=out_dir)
 
 
 def download_optical(settings, out_dir, force_abbr, debug_force=False):
@@ -113,20 +116,26 @@ def download_optical(settings, out_dir, force_abbr, debug_force=False):
     ## Same command as above will be send to container, but without the "--no-act" flag
     while True:
         answer = input(f"Do you want to proceed with the download? (y/n)")
-        if answer in ['y', 'yes', 'n', 'no']:
+
+        if answer in ['y', 'yes']:
+
+            print("\n#### \nStarting download... \n"
+                  "Depending on the dataset size and your internet speed, this might take a while. \n"
+                  "Unfortunately there's currently no good solution to show the download progress. \n"
+                  "If the download takes longer than you intended, you can just cancel the process \n"
+                  "and start it again at a later time using the same settings in the settings.prm file. \n"
+                  "FORCE automatically checks for existing scenes and will only download new scenes!")
+
+            Client.execute(FORCE_PATH, ["force-level1-csd", "-s", sensors, "-d", daterange,
+                                        "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
+                           options=["--cleanenv"])
+
             break
+
+        elif answer in ['n', 'no']:
+            print("\n#### \nDownload cancelled...")
+            break
+
         else:
             print(f"{answer} is not a valid answer! \n ----------")
             continue
-
-    if answer in ['y', 'yes']:
-        print("\n#### \nStarting download... \n"
-              "Depending on the dataset size and your internet speed, this might take a while. \n"
-              "Unfortunately there's currently no good solution to show the download progress. \n"
-              "If the download takes longer than you intended, you can just cancel the process and start it again \n"
-              "at a later time using the same settings in the settings.prm file. \n"
-              "FORCE checks for existing scenes and will only download new scenes!")
-
-        Client.execute(FORCE_PATH, ["force-level1-csd", "-s", sensors, "-d", daterange,
-                                    "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
-                       options=["--cleanenv"])
