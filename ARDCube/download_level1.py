@@ -1,6 +1,6 @@
 from ARDCube.config import FORCE_PATH
-from ARDCube.read_settings import get_settings
-from ARDCube.auxiliary.aux import get_aoi_path, check_sat_settings
+from ARDCube.settings import get_settings
+from ARDCube.utils import get_aoi_path, check_sat_settings
 
 import os
 import logging

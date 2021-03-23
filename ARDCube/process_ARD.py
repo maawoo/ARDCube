@@ -1,6 +1,6 @@
 from ARDCube.config import ROOT_DIR, FORCE_PATH, PYROSAR_PATH, SAT_DICT
-from ARDCube.read_settings import get_settings
-from ARDCube.auxiliary.aux import create_dem
+from ARDCube.settings import get_settings
+from ARDCube.utils import create_dem
 
 import os
 from datetime import datetime
