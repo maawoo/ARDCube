@@ -76,7 +76,7 @@ def create_dem(settings):
                 break
 
             else:
-                print(f"{answer} is not a valid answer! \n ----------")
+                print(f"---------- \n{answer} is not a valid answer! \n----------")
                 continue
 
     else:

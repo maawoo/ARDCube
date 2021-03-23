@@ -1,14 +1,16 @@
 ++PARAM_LEVEL2_START++
 
-# This is the CUSTOM parameter file used to process level 2 Analysis Ready Data using FORCE.
-# It will not be modified in any way by the ARDCube scripts and send to FORCE as-is.
+# This is the CUSTOM parameter file used to process Analysis Ready Data using FORCE.
+# This file will be used automatically if the field 'UseDefault' in settings.prm is set to False.
+# None of the parameter field will be modified in any way by the ARDCube scripts. It will be
+# send to FORCE as-is.
 
-# You need to change the the field 'UseDefault' in settings.prm to False, otherwise the file
-# FORCE_default.prm will be used.
-
-# You can find a more detailed description of the parameters in FORCE_parameter_description.prm. 
-# More information on the level 2 processing can be found in the FORCE docs:
+# You can find a more detailed description of all parameters in FORCE_parameter_description.prm. 
+# More information on the level-2 processing can also be found in the FORCE docs:
 # https://force-eo.readthedocs.io/en/latest/howto/l2-ard.html#tut-ard
+
+# May the FORCE be with you!
+
 
 # INPUT/OUTPUT DIRECTORIES
 # ------------------------------------------------------------------------

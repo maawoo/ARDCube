@@ -9,9 +9,9 @@ def get_settings(check=False):
 
     ## Get path of settings file. Ask for input, if not found in current work directory.
     if 'settings.prm' not in os.listdir(ROOT_DIR):
-        s_path = input(f"\'settings.prm\' could not be found in {ROOT_DIR}.\n"
+        s_path = input(f"'settings.prm' could not be found in {ROOT_DIR}.\n"
                        f"Please provide the full path to your settings file "
-                       f"(e.g. \'/path/to/settings.prm\'): ")
+                       f"(e.g. '/path/to/settings.prm'): ")
     else:
         s_path = os.path.join(ROOT_DIR, 'settings.prm')
 
@@ -34,20 +34,20 @@ def _check_settings(settings):
 
     ## ['GENERAL']
     assert os.path.isdir(settings['GENERAL']['DataDirectory']), \
-        f"Field \'DataDirectory\': {settings['GENERAL']['DataDirectory']} is not a valid path!"
+        f"Field 'DataDirectory': {settings['GENERAL']['DataDirectory']} is not a valid path!"
     # assert AOI?
     # assert DEM?
     for sensor in ['Sentinel1', 'Sentinel2', 'Landsat4', 'Landsat5', 'Landsat7', 'Landsat8']:
         try:
             settings.getboolean('GENERAL', sensor)
         except ValueError:
-            raise ValueError(f"Field \'{sensor}\': Must be a boolean (True/False)!")
+            raise ValueError(f"Field '{sensor}': Must be a boolean (True/False)!")
 
     ## ['DOWNLOAD']
     # assert Timespan
     # assert OpticalCloudCoverRange
     assert settings['DOWNLOAD']['SAROrbitDirection'] is None or 'asc' or 'desc', \
-        f"Field \'SAROrbitDirection\': {settings['DOWNLOAD']['SAROrbitDirection']} is not a valid option!"
+        f"Field 'SAROrbitDirection': {settings['DOWNLOAD']['SAROrbitDirection']} is not a valid option!"
 
     ## [PROCESSING]
     # ...

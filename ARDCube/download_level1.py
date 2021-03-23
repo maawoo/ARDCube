@@ -65,7 +65,7 @@ def download_sar(settings, out_dir, log_sentinelsat=False):
                       platformname='Sentinel-1',
                       producttype='GRD')
 
-    ## Print query information and ask user if download should be started or not.
+    ## Before starting the download, ask for user confirmation. (and print out query information)
     while True:
         answer = input(f"{len(query)} Sentinel-1 GRD files were found between {timespan[0]} and {timespan[1]} \n"
                        f"for the AOI defined by '{aoi_path}'. \n"
@@ -80,7 +80,7 @@ def download_sar(settings, out_dir, log_sentinelsat=False):
             break
 
         else:
-            print(f"{answer} is not a valid answer! \n ----------")
+            print(f"---------- \n{answer} is not a valid answer! \n----------")
             continue
 
 
@@ -100,7 +100,7 @@ def download_optical(settings, out_dir, force_abbr, debug_force=False):
     meta_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'meta/force')
     aoi_path = get_aoi_path(settings)
 
-    ## Send query to FORCE Singularity container as dry run first ("--no-act") and print query information
+    ## Send query to FORCE Singularity container as dry run first ("--no-act") and print output
     Client.debug = debug_force
     output = Client.execute(FORCE_PATH, ["force-level1-csd", "--no-act", "-s", sensors, "-d", daterange,
                                          "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
@@ -112,7 +112,7 @@ def download_optical(settings, out_dir, force_abbr, debug_force=False):
     else:
         print(output)
 
-    ## Ask user if download should actually be started.
+    ## Before starting the download, ask for user confirmation.
     ## Same command as above will be send to container, but without the "--no-act" flag
     while True:
         answer = input(f"Do you want to proceed with the download? (y/n)")
@@ -137,5 +137,5 @@ def download_optical(settings, out_dir, force_abbr, debug_force=False):
             break
 
         else:
-            print(f"{answer} is not a valid answer! \n ----------")
+            print(f"---------- \n{answer} is not a valid answer! \n----------")
             continue
