@@ -41,30 +41,33 @@ def process_sar(settings):
 def process_optical(settings, dataset, debug_force=False):
     """..."""
 
-    ## TODO: Add some useful messages
-    ## TODO: Check how many scenes will be processed and ask for user confirmation before starting
-
     Client.debug = debug_force
 
-    ## If UseDefault = True, a copy of FORCE_default.prm will automatically filled with all necessary information and
-    ## used for processing
-    if settings.getboolean('PROCESSING', 'UseDefault'):
+    ## If UseDefault = True, a copy of FORCE_default_template.prm will automatically be filled with all necessary
+    ## information and used for processing. If UseDefault = False, the file FORCE_custom.prm will be used for
+    ## processing and not changed in any way!
+    if settings.getboolean('PROCESSING', 'UseDefault'):  # = if True / Will also raise an error if field is not boolean
         prm_file = _mod_force_default_prm(settings, dataset)
-
-        output = Client.execute(FORCE_PATH, ["force-level2", prm_file],
-                                options=["--cleanenv"])
-    ## If UseDefault = False, the file FORCE_custom.prm will be used for processing and not changed in any way!
     else:
         prm_file = os.path.join(ROOT_DIR, 'misc/force', 'FORCE_custom.prm')
 
+    ## Get path to file queue from parameter file and check how many scenes will be processed.
+    ## The functions asks for user confirmation and returns a boolean depending on the answer.
+    check = _check_force_file_queue(prm_file)
+
+    if check:  # if answer was 'yes', start processing
+
+        ## TODO: Stream output instead??
         output = Client.execute(FORCE_PATH, ["force-level2", prm_file],
                                 options=["--cleanenv"])
+        if debug_force:
+            for line in output:
+                print(line)
+        else:
+            print(output)
 
-    if debug_force:
-        for line in output:
-            print(line)
     else:
-        print(output)
+        print("\n#### \nProcessing cancelled...")
 
 
 def _mod_force_default_prm(settings, dataset):
@@ -126,3 +129,49 @@ def _mod_force_default_prm(settings, dataset):
         file.writelines(lines)
 
     return prm_path_new
+
+
+def _check_force_file_queue(prm_path):
+
+    ## Read parameter file and get all lines as a list
+    with open(prm_path, 'r') as file:
+        lines = file.readlines()
+
+    ## Return index of 'FILE_QUEUE' parameter field
+    ind = [i for i, item in enumerate(lines) if item.startswith('FILE_QUEUE')]
+
+    ## Check if field exists and for duplicate entries, just to be sure..
+    if len(ind) > 1:
+        raise IndexError(f"The field 'FILE_QUEUE' was found more than once in '{prm_path}'")
+    elif len(ind) == 0:
+        raise IndexError(f"The field 'FILE_QUEUE' could not be found in '{prm_path}'")
+
+    ## Extract path from string, check if file exists and read it
+    queue_path = lines[ind[0]].replace('FILE_QUEUE = ', '').replace('\n', '')
+
+    if not os.path.isfile(queue_path):
+        raise FileNotFoundError(f"{queue_path} does not exist.")
+
+    with open(queue_path, 'r') as file:
+        lines_queue = file.readlines()
+
+    ## Count how many entries in queue file are marked as 'DONE' and how many as 'QUEUED'
+    n_done = len([i for i, item in enumerate(lines_queue) if item.endswith('DONE\n')])
+    n_queued = len([i for i, item in enumerate(lines_queue) if item.endswith('QUEUED\n')])
+
+    ## Before starting the batch processing, ask for user confirmation.
+    while True:
+        answer = input(f"The following queue file will be queried by FORCE: {queue_path}\n"
+                       f"{n_done} scenes are marked as 'DONE' \n{n_queued} scenes are marked as 'QUEUED'\n"
+                       f"Do you want to proceed with the batch processing of all {n_queued} scenes marked as 'QUEUED'?"
+                       f" (y/n)")
+
+        if answer in ['y', 'yes']:
+            return True
+
+        elif answer in ['n', 'no']:
+            return False
+
+        else:
+            print(f"---------- \n{answer} is not a valid answer! \n----------")
+            continue
