@@ -52,7 +52,7 @@ def check_sat_settings(settings):
 def create_dem(settings):
     """..."""
 
-    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/auxiliary/dem.py')
+    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/pyroSAR/dem.py')
     aoi_path = get_aoi_path(settings)
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
