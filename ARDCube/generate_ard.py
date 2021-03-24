@@ -1,18 +1,18 @@
 from ARDCube.config import ROOT_DIR, FORCE_PATH, PYROSAR_PATH, SAT_DICT
 from ARDCube.settings import get_settings
-from ARDCube.utils import create_dem
+from ARDCube.utils import get_aoi_path
 
 import os
 from datetime import datetime
 from spython.main import Client
 
 
-def process_ard(dataset):
+def generate_ard(dataset):
     """..."""
 
     ## Check if dataset is supported.
     if dataset not in list(SAT_DICT.keys()):
-        raise NotImplemented(f"{dataset} not supported!")
+        raise NotImplemented(f"{dataset} is not supported!")
 
     ## Get settings
     settings = get_settings()
@@ -52,7 +52,7 @@ def process_optical(settings, dataset, debug_force=False):
         prm_file = os.path.join(ROOT_DIR, 'misc/force', 'FORCE_custom.prm')
 
     ## Get path to file queue from parameter file and check how many scenes will be processed.
-    ## The functions asks for user confirmation and returns a boolean depending on the answer.
+    ## The function asks for user confirmation and returns a boolean.
     check = _check_force_file_queue(prm_file)
 
     if check:  # if answer was 'yes', start processing
@@ -68,6 +68,44 @@ def process_optical(settings, dataset, debug_force=False):
 
     else:
         print("\n#### \nProcessing cancelled...")
+
+
+def create_dem(settings):
+    """..."""
+
+    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/pyroSAR/dem.py')
+    aoi_path = get_aoi_path(settings)
+    aoi_name = os.path.splitext(os.path.basename(aoi_path))[0]
+
+    out_file = os.path.join(out_dir, f"SRTM_1Sec_DEM__{aoi_name}.tif")
+
+    if os.path.isfile(out_file):
+        while True:
+            answer = input(f"{out_file} already exist.\n"
+                           f"Do you want to create a new SRTM 1Sec DEM for your AOI and overwrite the existing file? \n"
+                           f"If not, the existing DEM will be used for processing! (y/n)")
+
+            if answer in ['y', 'yes']:
+                Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{out_file}"],
+                               options=["--cleanenv"])
+                break
+
+            elif answer in ['n', 'no']:
+                break
+
+            else:
+                print(f"---------- \n{answer} is not a valid answer! \n----------")
+                continue
+
+    else:
+        Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{out_file}"],
+                       options=["--cleanenv"])
+
+    return out_file
 
 
 def _mod_force_default_prm(settings, dataset):
@@ -90,12 +128,12 @@ def _mod_force_default_prm(settings, dataset):
     dir_level2 = os.path.join(data_dir, f'level2/{dataset}')
     dir_log = os.path.join(data_dir, f'log/{dataset}')
     dir_tmp = os.path.join(data_dir, 'temp')
-    dem_nodata = settings['GENERAL']['DEM_NoData']
+    file_dem = settings['PROCESSING']['DEM']
+    dem_nodata = settings['PROCESSING']['DEM_NoData']
+    if file_dem == 'srtm':
+        file_dem = create_dem(settings)  # Create DEM if 'srtm' selected!
     nproc = settings['PROCESSING']['NPROC']
     nthread = settings['PROCESSING']['NTHREAD']
-    file_dem = settings['GENERAL']['DEM']
-    if file_dem == 'srtm':
-        file_dem = create_dem(settings)  # Create DEM if 'srtm' selected
 
     ## These paths might not exists at this point, so before running FORCE we should make sure they do!
     paths_to_check = [dir_level2, dir_log, dir_tmp]
@@ -123,7 +161,7 @@ def _mod_force_default_prm(settings, dataset):
         lines[i] = f"{p} = {v}\n"
 
     ## Create copy of FORCE_default.prm with adjusted parameter fields and return its path
-    now = datetime.now().strftime('%Y%m%d_%H%M%S')
+    now = datetime.now().strftime('%Y%m%dT%H%M%S')
     prm_path_new = os.path.join(ROOT_DIR, 'misc/force', f'FORCE_default__{now}.prm')
     with open(prm_path_new, 'w') as file:
         file.writelines(lines)
@@ -132,6 +170,7 @@ def _mod_force_default_prm(settings, dataset):
 
 
 def _check_force_file_queue(prm_path):
+    """..."""
 
     ## Read parameter file and get all lines as a list
     with open(prm_path, 'r') as file:
@@ -159,7 +198,7 @@ def _check_force_file_queue(prm_path):
     n_done = len([i for i, item in enumerate(lines_queue) if item.endswith('DONE\n')])
     n_queued = len([i for i, item in enumerate(lines_queue) if item.endswith('QUEUED\n')])
 
-    ## Before starting the batch processing, ask for user confirmation.
+    ## Before starting the batch processing, ask for user confirmation. Return boolean depending on answer.
     while True:
         answer = input(f"The following queue file will be queried by FORCE: {queue_path}\n"
                        f"{n_done} scenes are marked as 'DONE' \n{n_queued} scenes are marked as 'QUEUED'\n"

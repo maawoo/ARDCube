@@ -10,16 +10,6 @@ DataDirectory = /home/marco/pypypy/ARDCube_data
 ## GeoJSON, GPKG and Shapefile should all work. http://geojson.io provides a convenient way to create a GeoJSON file.
 AOI = th_stripe.geojson
 
-## Can either be a filename (e.g. 'dem.tif') or a full path (e.g. '/path/to/dem.tif').
-## If only a filename is provided, it is assumed to be located in the subdirectory '/DataDirectory/misc/dem'.
-## FORCE documentation on how to prepare a DEM: https://force-eo.readthedocs.io/en/latest/howto/dem.html
-## You can also use 'srtm' as an input. This will automatically create a 1 arc-second (30 meters) SRTM DEM for the
-## area of interest and use '/DataDirectory/misc/dem' as the output directory.
-DEM = srtm
-
-## If you use 'srtm' in the field above, you can leave the value '-32768'. Otherwise adjust it.  
-DEM_NoData = -32768
-
 ##
 Sentinel1 = True
 Sentinel2 = True
@@ -27,6 +17,7 @@ Landsat4 = False
 Landsat5 = False
 Landsat7 = False
 Landsat8 = True
+
 
 [DOWNLOAD]
 ## Settings that will only be used for downloading datasets.
@@ -46,12 +37,25 @@ SAROrbitDirection =
 CopernicusUser = maawoo
 CopernicusPassword =
 
+
 [PROCESSING]
 ## Settings that will only be used for processing datasets.
 
-##
-UseDefault = True
+## Can either be a filename (e.g. 'dem.tif') or a full path (e.g. '/path/to/dem.tif').
+## If only a filename is provided, it is assumed to be located in the subdirectory '/DataDirectory/misc/dem'.
+## FORCE documentation on how to prepare a DEM: https://force-eo.readthedocs.io/en/latest/howto/dem.html
+## You can also use 'srtm' as an input. This will automatically create a 1 arc-second (30 meters) SRTM DEM for the
+## area of interest and use '/DataDirectory/misc/dem' as the output directory.
+DEM = srtm
 
-##
+## If you use 'srtm' in the field above, you can leave the value '-32768'. Otherwise adjust it.
+DEM_NoData = -32768
+
+## FORCE
+UseDefault = True
 NPROC = 1
 NTHREAD = 4
+
+## pyroSAR
+
+

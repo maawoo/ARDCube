@@ -9,7 +9,7 @@ from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 from spython.main import Client
 
 
-def download_level1(log_sentinelsat=False, debug_force=False):
+def download_level1(debug_force=False):
     """Main download script."""
 
     ## Get user defined settings
@@ -26,8 +26,7 @@ def download_level1(log_sentinelsat=False, debug_force=False):
 
         if sat == 'Sentinel1':
             download_sar(settings=settings,
-                         out_dir=sats[sat]['level1_dir'],
-                         log_sentinelsat=log_sentinelsat)
+                         out_dir=sats[sat]['level1_dir'])
         else:
             download_optical(settings=settings,
                              out_dir=sats[sat]['level1_dir'],
@@ -35,18 +34,20 @@ def download_level1(log_sentinelsat=False, debug_force=False):
                              debug_force=debug_force)
 
 
-def download_sar(settings, out_dir, log_sentinelsat=False):
+def download_sar(settings, out_dir):
     """Download Sentinel-1 GRD data from Copernicus Open Access Hub based on parameters defined in 'settings.prm'.
     https://github.com/sentinelsat/sentinelsat
     """
     ## TODO: Include SAROrbitDirection to query only ascending/descending scenes
 
-    ## Optionally store sentinelsat logging information in '/DataDirectory/log'
+    ## Log output by default
     ## https://sentinelsat.readthedocs.io/en/stable/api.html#logging
-    if log_sentinelsat:
-        filename = os.path.join(settings['GENERAL']['DataDirectory'], 'log',
-                                f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S__download_s1')}.log")
-        logging.basicConfig(filename=filename, filemode='w', format='%(message)s', level='INFO')
+    log_file = os.path.join(settings['GENERAL']['DataDirectory'], 'log',
+                            f"{datetime.now().strftime('%Y%m%dT%H%M%S__download_sentinel1')}.log")
+    if not os.path.exists(os.path.dirname(log_file)):
+        os.makedirs(os.path.dirname(log_file))
+
+    logging.basicConfig(filename=log_file, filemode='w', format='%(message)s', level='INFO')
 
     ## Get footprint from AOI
     aoi_path = get_aoi_path(settings)
@@ -70,6 +71,7 @@ def download_sar(settings, out_dir, log_sentinelsat=False):
         answer = input(f"{len(query)} Sentinel-1 GRD files were found between {timespan[0]} and {timespan[1]} \n"
                        f"for the AOI defined by '{aoi_path}'. \n"
                        f"The total file size is {api.get_products_size(query)} GB \n"
+                       f"Output directory: {out_dir} \n"
                        f"Do you want to proceed with the download? (y/n)")
 
         if answer in ['y', 'yes']:
@@ -115,7 +117,8 @@ def download_optical(settings, out_dir, force_abbr, debug_force=False):
     ## Before starting the download, ask for user confirmation.
     ## Same command as above will be send to container, but without the "--no-act" flag
     while True:
-        answer = input(f"Do you want to proceed with the download? (y/n)")
+        answer = input(f"Output directory: {out_dir} \n"
+                       f"Do you want to proceed with the download? (y/n)")
 
         if answer in ['y', 'yes']:
 
