@@ -29,7 +29,7 @@ def check_sat_settings(settings):
 
     dict_out = {}
     for sat in list(SAT_DICT.keys()):
-        if settings.getboolean(sat):
+        if settings.getboolean('GENERAL', sat):
 
             ## Define dict content and create entry
             force_abbr = SAT_DICT[sat]
@@ -52,23 +52,24 @@ def check_sat_settings(settings):
 def create_dem(settings):
     """..."""
 
-    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/pyroSAR/dem.py')
-    aoi_path = get_aoi_path(settings)
-
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    file_path = os.path.join(out_dir, 'srtm.tif')
+    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/pyroSAR/dem.py')
+    aoi_path = get_aoi_path(settings)
+    aoi_name = os.path.splitext(os.path.basename(aoi_path))[0]
 
-    if os.path.isfile(file_path):
+    out_file = os.path.join(out_dir, f"SRTM_1Sec_DEM__{aoi_name}.tif")
+
+    if os.path.isfile(out_file):
         while True:
-            answer = input(f"{file_path} already exist.\n"
-                           f"Do you want to create a new SRTM DEM for your AOI and overwrite the existing file? \n"
+            answer = input(f"{out_file} already exist.\n"
+                           f"Do you want to create a new SRTM 1Sec DEM for your AOI and overwrite the existing file? \n"
                            f"If not, the existing DEM will be used for processing! (y/n)")
 
             if answer in ['y', 'yes']:
-                Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{out_dir}"],
+                Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{out_file}"],
                                options=["--cleanenv"])
                 break
 
@@ -80,7 +81,11 @@ def create_dem(settings):
                 continue
 
     else:
-        Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{out_dir}"],
+        Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{out_file}"],
                        options=["--cleanenv"])
 
-    return file_path
+    return out_file
+
+
+def build_singularity():
+    return None
