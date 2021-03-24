@@ -1,44 +1,50 @@
 from ARDCube.config import ROOT_DIR, FORCE_PATH, PYROSAR_PATH, SAT_DICT
-from ARDCube.settings import get_settings
-from ARDCube.utils import get_aoi_path
+from ARDCube.utils import get_settings, get_dem_path
 
 import os
 from datetime import datetime
 from spython.main import Client
 
 
-def generate_ard(dataset):
+def generate_ard(sensor, debug_force=False):
     """..."""
 
-    ## Check if dataset is supported.
-    if dataset not in list(SAT_DICT.keys()):
-        raise NotImplemented(f"{dataset} is not supported!")
+    ## Check if sensor is supported.
+    if sensor not in list(SAT_DICT.keys()):
+        raise NotImplemented(f"{sensor} is not supported!")
 
     ## Get settings
     settings = get_settings()
 
-    ## Check if level-1 directory exist, if not raise an error
-    level1_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', dataset)
+    ##
+    level1_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
     if not os.path.isdir(level1_dir):
-        raise NotADirectoryError(f"{level1_dir} not found. \nDoes level-1 data for {dataset} exist?\n"
+        raise NotADirectoryError(f"{level1_dir} not found. \nDoes level-1 data for {sensor} exist?\n"
                                  f"If not, you can use 'download_level1()' to download some data first! :)")
 
-    ## Process ARD!
-    if dataset == 'Sentinel1':
+    ## Start processing functions
+    print(f"#### Start processing of {sensor} dataset...")
+
+    if sensor == 'Sentinel1':
         process_sar(settings=settings)
+
     else:
         process_optical(settings=settings,
-                        dataset=dataset)
+                        sensor=sensor,
+                        debug_force=debug_force)
 
 
 def process_sar(settings):
     """..."""
-    pass
+
+    level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'Sentinel1')
+    if not os.path.exists(level2_dir):
+        os.makedirs(level2_dir)
 
     ## TODO: Implement SAR processing with pyroSAR container
 
 
-def process_optical(settings, dataset, debug_force=False):
+def process_optical(settings, sensor, debug_force=False):
     """..."""
 
     Client.debug = debug_force
@@ -47,7 +53,7 @@ def process_optical(settings, dataset, debug_force=False):
     ## information and used for processing. If UseDefault = False, the file FORCE_custom.prm will be used for
     ## processing and not changed in any way!
     if settings.getboolean('PROCESSING', 'UseDefault'):  # = if True / Will also raise an error if field is not boolean
-        prm_file = _mod_force_default_prm(settings, dataset)
+        prm_file = _mod_force_default_prm(settings, sensor)
     else:
         prm_file = os.path.join(ROOT_DIR, 'misc/force', 'FORCE_custom.prm')
 
@@ -56,7 +62,7 @@ def process_optical(settings, dataset, debug_force=False):
     check = _check_force_file_queue(prm_file)
 
     if check:  # if answer was 'yes', start processing
-
+        print("#### Start processing...")
         ## TODO: Stream output instead??
         output = Client.execute(FORCE_PATH, ["force-level2", prm_file],
                                 options=["--cleanenv"])
@@ -67,48 +73,10 @@ def process_optical(settings, dataset, debug_force=False):
             print(output)
 
     else:
-        print("\n#### \nProcessing cancelled...")
+        print("#### Processing cancelled...")
 
 
-def create_dem(settings):
-    """..."""
-
-    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/pyroSAR/dem.py')
-    aoi_path = get_aoi_path(settings)
-    aoi_name = os.path.splitext(os.path.basename(aoi_path))[0]
-
-    out_file = os.path.join(out_dir, f"SRTM_1Sec_DEM__{aoi_name}.tif")
-
-    if os.path.isfile(out_file):
-        while True:
-            answer = input(f"{out_file} already exist.\n"
-                           f"Do you want to create a new SRTM 1Sec DEM for your AOI and overwrite the existing file? \n"
-                           f"If not, the existing DEM will be used for processing! (y/n)")
-
-            if answer in ['y', 'yes']:
-                Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{out_file}"],
-                               options=["--cleanenv"])
-                break
-
-            elif answer in ['n', 'no']:
-                break
-
-            else:
-                print(f"---------- \n{answer} is not a valid answer! \n----------")
-                continue
-
-    else:
-        Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{out_file}"],
-                       options=["--cleanenv"])
-
-    return out_file
-
-
-def _mod_force_default_prm(settings, dataset):
+def _mod_force_default_prm(settings, sensor):
     """..."""
 
     ## Get DataDirectory from settings
@@ -124,14 +92,12 @@ def _mod_force_default_prm(settings, dataset):
         lines = file.readlines()
 
     ## Get all necessary information for the parameter file
-    file_queue = os.path.join(data_dir, f'level1/{dataset}', 'pool.txt')
-    dir_level2 = os.path.join(data_dir, f'level2/{dataset}')
-    dir_log = os.path.join(data_dir, f'log/{dataset}')
+    file_queue = os.path.join(data_dir, f'level1/{sensor}', 'pool.txt')
+    dir_level2 = os.path.join(data_dir, f'level2/{sensor}')
+    dir_log = os.path.join(data_dir, f'log/{sensor}')
     dir_tmp = os.path.join(data_dir, 'temp')
-    file_dem = settings['PROCESSING']['DEM']
+    file_dem = get_dem_path(settings)
     dem_nodata = settings['PROCESSING']['DEM_NoData']
-    if file_dem == 'srtm':
-        file_dem = create_dem(settings)  # Create DEM if 'srtm' selected!
     nproc = settings['PROCESSING']['NPROC']
     nthread = settings['PROCESSING']['NTHREAD']
 
@@ -212,5 +178,5 @@ def _check_force_file_queue(prm_path):
             return False
 
         else:
-            print(f"---------- \n{answer} is not a valid answer! \n----------")
+            print(f"{answer} is not a valid answer!")
             continue

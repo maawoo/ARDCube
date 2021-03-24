@@ -1,7 +1,29 @@
-from ARDCube.config import ROOT_DIR, PYROSAR_PATH, SAT_DICT
+from ARDCube.config import ROOT_DIR, PYROSAR_PATH
 
+import configparser
 import os
 from spython.main import Client
+
+
+def get_settings():
+    """Gets the path of the settings file, reads it, checks it and returns it as a ConfigParser object."""
+
+    ## Get path of settings file. Ask for input, if not found in current work directory.
+    if 'settings.prm' not in os.listdir(ROOT_DIR):
+        s_path = input(f"'settings.prm' could not be found in {ROOT_DIR}.\n"
+                       f"Please provide the full path to your settings file "
+                       f"(e.g. '/path/to/settings.prm'): ")
+    else:
+        s_path = os.path.join(ROOT_DIR, 'settings.prm')
+
+    ## Read settings file
+    settings = configparser.ConfigParser(allow_no_value=True)
+    settings.read(s_path)
+
+    # assert os.path.isdir(settings['GENERAL']['DataDirectory']), \
+    #     f"Field 'DataDirectory': {settings['GENERAL']['DataDirectory']} is not a valid path!"
+
+    return settings
 
 
 def get_aoi_path(settings):
@@ -24,26 +46,64 @@ def get_aoi_path(settings):
     return aoi_path
 
 
-def check_sat_settings(settings):
-    """Creates a dictionary based on which satellite fields were set to True in settings file."""
+def get_dem_path(settings):
+    """..."""
 
-    dict_out = {}
-    for sat in list(SAT_DICT.keys()):
-        if settings.getboolean('GENERAL', sat):
+    ## Get input from DEM field
+    dem_input = settings['PROCESSING']['DEM']
 
-            ## Define dict content and create entry
-            force_abbr = SAT_DICT[sat]
-            level1_dir = os.path.join(settings['GENERAL']['DataDirectory'], f"level1/{sat}")
-            level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], f"level2/{sat}")
+    ## Check if input exists
+    if len(dem_input) == 0:
+        raise ValueError("Field 'DEM': Input missing! ")
 
-            dict_out[sat] = {'force_abbr': force_abbr,
-                             'level1_dir': level1_dir,
-                             'level2_dir': level2_dir}
+    ## Check if 'srtm', a filename or a full path was chosen as input...
+    if dem_input == 'srtm':
+        dem_path = create_dem(settings)
+    elif len(os.path.dirname(dem_input)) == 0:
+        dem_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem', dem_input)
+    else:
+        dem_path = dem_input
 
-            ## Create directories for level1 (download) and level2 (processing) if they don't exist already
-            if not os.path.exists(level1_dir):
-                os.makedirs(level1_dir)
-            if not os.path.exists(level2_dir):
-                os.makedirs(level2_dir)
+    ## Check if file exists
+    if not os.path.isfile(dem_path):
+        raise FileNotFoundError(f"{dem_path} does not exist!")
 
-    return dict_out
+    return dem_path
+
+
+def create_dem(settings):
+    """..."""
+
+    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/pyroSAR/dem.py')
+    aoi_path = get_aoi_path(settings)
+    aoi_name = os.path.splitext(os.path.basename(aoi_path))[0]
+
+    dem_path = os.path.join(out_dir, f"SRTM_1Sec_DEM__{aoi_name}.tif")
+
+    if os.path.isfile(dem_path):
+        while True:
+            answer = input(f"{dem_path} already exist.\n"
+                           f"Do you want to create a new SRTM 1Sec DEM for your AOI and overwrite the existing file? \n"
+                           f"If not, the existing DEM will be used for processing! (y/n)")
+
+            if answer in ['y', 'yes']:
+                Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{dem_path}"],
+                               options=["--cleanenv"])
+                break
+
+            elif answer in ['n', 'no']:
+                break
+
+            else:
+                print(f"{answer} is not a valid answer!")
+                continue
+
+    else:
+        Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{dem_path}"],
+                       options=["--cleanenv"])
+
+    return dem_path
