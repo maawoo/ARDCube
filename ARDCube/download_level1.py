@@ -1,6 +1,7 @@
 from ARDCube.config import FORCE_PATH, SAT_DICT
 from ARDCube.utils import get_settings, get_aoi_path
 
+import sys
 import os
 import logging
 from datetime import datetime
@@ -96,8 +97,6 @@ def download_optical(settings, sensor, debug_force=False):
     https://force-eo.readthedocs.io/en/latest/howto/level1-csd.html#tut-l1csd
     """
 
-    ## TODO: Check if metadata catalogues exist and if not download them first!
-
     Client.debug = debug_force
 
     ## Collect all information that will be used in the query
@@ -106,10 +105,15 @@ def download_optical(settings, sensor, debug_force=False):
                 f"{settings['DOWNLOAD']['TimespanMax']}"
     cloudcover = f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMin']}," \
                  f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMax']}"
+
     meta_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'meta/catalogues')
+    if not os.path.exists(meta_dir):
+        _download_meta_catalogues(meta_dir)
+
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
+
     aoi_path = get_aoi_path(settings)
 
     ## Send query to FORCE Singularity container as dry run first ("--no-act") and print output
@@ -147,6 +151,26 @@ def download_optical(settings, sensor, debug_force=False):
         elif answer in ['n', 'no']:
             print("#### Download cancelled...")
             break
+
+        else:
+            print(f"{answer} is not a valid answer!")
+            continue
+
+
+def _download_meta_catalogues(meta_dir):
+    """Download metadata catalogues necessary for downloading via FORCE if user confirms."""
+
+    while True:
+        answer = input(f"{meta_dir} does not exist. \nTo download datasets via FORCE, it is necessary to have "
+                       f"metadata catalogues stored in a local directory.\n "
+                       f"Do you want to download the latest catalogues into {meta_dir}? (y/n)")
+
+        if answer in ['y', 'yes']:
+            os.makedirs(meta_dir)
+            Client.execute(FORCE_PATH, ["force-level1-csd", "-u", meta_dir], options=["--cleanenv"])
+
+        elif answer in ['n', 'no']:
+            sys.exit()
 
         else:
             print(f"{answer} is not a valid answer!")
