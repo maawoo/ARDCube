@@ -66,7 +66,8 @@ def process_optical(settings, sensor, debug_force=False):
         ## TODO: Stream output instead??
         output = Client.execute(FORCE_PATH, ["force-level2", prm_file],
                                 options=["--cleanenv"])
-        if debug_force:
+
+        if isinstance(output, list):
             for line in output:
                 print(line)
         else:

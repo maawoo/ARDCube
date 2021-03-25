@@ -121,7 +121,7 @@ def download_optical(settings, sensor, debug_force=False):
                                          "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
                             options=["--cleanenv"])
 
-    if debug_force:
+    if isinstance(output, list):
         for line in output:
             print(line)
     else:
