@@ -7,9 +7,9 @@ POSTGRES_PATH = os.path.join(ROOT_DIR, 'singularity/postgres', 'postgres.sif')
 
 ## Key = Supported sensors
 ## Value = Abbreviation used in FORCE download module
-SAT_DICT = {'Sentinel1': None,
-            'Sentinel2': 'S2A,S2B',
-            'Landsat4': 'LT04',
-            'Landsat5': 'LT05',
-            'Landsat7': 'LE07',
-            'Landsat8': 'LC08'}
+SAT_DICT = {'sentinel1': None,
+            'sentinel2': 'S2A,S2B',
+            'landsat4': 'LT04',
+            'landsat5': 'LT05',
+            'landsat7': 'LE07',
+            'landsat8': 'LC08'}

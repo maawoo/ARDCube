@@ -25,7 +25,7 @@ def generate_ard(sensor, debug_force=False):
     ## Start processing functions
     print(f"#### Start processing of {sensor} dataset...")
 
-    if sensor == 'Sentinel1':
+    if sensor == 'sentinel1':
         process_sar(settings=settings)
 
     else:
@@ -37,7 +37,7 @@ def generate_ard(sensor, debug_force=False):
 def process_sar(settings):
     """..."""
 
-    level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'Sentinel1')
+    level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1')
     if not os.path.exists(level2_dir):
         os.makedirs(level2_dir)
 

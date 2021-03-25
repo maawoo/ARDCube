@@ -23,7 +23,7 @@ def download_level1(sensor, debug_force=False):
     ## Both functions print query information first and then ask for confirmation to start the download.
     print(f"#### Start download query for {sensor}...")
 
-    if sensor == 'Sentinel1':
+    if sensor == 'sentinel1':
         download_sar(settings=settings)
 
     else:
@@ -38,7 +38,7 @@ def download_sar(settings):
     """
     ## TODO: Include SAROrbitDirection to query only ascending/descending scenes
 
-    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'Sentinel1')
+    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'sentinel1')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 

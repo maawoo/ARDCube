@@ -10,6 +10,7 @@ def main():
 
     command = sys.argv[1]
     sensor = sys.argv[2]
+    sensor = sensor.lower()  # Make lowercase
 
     if command == 'download':
         download_level1(sensor=sensor,
