@@ -13,14 +13,14 @@ def download_level1(sensor, debug_force=False):
 
     ## Check if sensor is supported.
     if sensor not in list(SAT_DICT.keys()):
-        raise NotImplemented(f"{sensor} is not supported!")
+        raise ValueError(f"{sensor} is not supported!")
 
     ## Get user defined settings
     settings = get_settings()
 
     ## Start download functions
     ## Both functions print query information first and then ask for confirmation to start the download.
-    print(f"#### Start downloading {sensor} data...")
+    print(f"#### Start download query for {sensor}...")
 
     if sensor == 'Sentinel1':
         download_sar(settings=settings)
@@ -38,6 +38,8 @@ def download_sar(settings):
     ## TODO: Include SAROrbitDirection to query only ascending/descending scenes
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'Sentinel1')
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
 
     ## Create logfile for sentinelsat output by default
     ## https://sentinelsat.readthedocs.io/en/stable/api.html#logging
@@ -68,15 +70,16 @@ def download_sar(settings):
 
     ## Before starting the download, print out query information and then ask for user confirmation.
     while True:
-        answer = input(f"{len(query)} Sentinel-1 GRD files were found between {timespan[0]} and {timespan[1]} \n"
+        answer = input(f"\n{len(query)} Sentinel-1 GRD scenes were found between {timespan[0]} and {timespan[1]} \n"
                        f"for the AOI defined by '{aoi_path}'. \n"
-                       f"The total file size is {api.get_products_size(query)} GB \n"
-                       f"Output directory: {out_dir} \n"
+                       f"\nThe total file size is {api.get_products_size(query)} GB \n"
+                       f"\nOutput directory: {out_dir} \n"
                        f"Do you want to proceed with the download? (y/n)")
 
         if answer in ['y', 'yes']:
             print("#### Starting download...")
-            api.download_all(query, directory_path=out_dir)
+            api.download_all(query,
+                             directory_path=out_dir)
             break
 
         elif answer in ['n', 'no']:
@@ -105,6 +108,8 @@ def download_optical(settings, sensor, debug_force=False):
                  f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMax']}"
     meta_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'meta/catalogues')
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
     aoi_path = get_aoi_path(settings)
 
     ## Send query to FORCE Singularity container as dry run first ("--no-act") and print output

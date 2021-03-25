@@ -11,7 +11,7 @@ def generate_ard(sensor, debug_force=False):
 
     ## Check if sensor is supported.
     if sensor not in list(SAT_DICT.keys()):
-        raise NotImplemented(f"{sensor} is not supported!")
+        raise ValueError(f"{sensor} is not supported!")
 
     ## Get settings
     settings = get_settings()
