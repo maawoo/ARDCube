@@ -13,7 +13,7 @@ def generate_ard(sensor, debug_force=False):
     if sensor not in list(SAT_DICT.keys()):
         raise ValueError(f"{sensor} is not supported!")
 
-    ## Get settings
+    ## Get user defined settings
     settings = get_settings()
 
     ##
@@ -62,19 +62,16 @@ def process_optical(settings, sensor, debug_force=False):
     check = _check_force_file_queue(prm_file)
 
     if check:  # if answer was 'yes', start processing
-        print("#### Start processing...")
-        ## TODO: Stream output instead??
-        output = Client.execute(FORCE_PATH, ["force-level2", prm_file],
-                                options=["--cleanenv"])
+        print("\n#### Start processing...")
 
-        if isinstance(output, list):
-            for line in output:
-                print(line)
-        else:
-            print(output)
+        out = Client.execute(FORCE_PATH, ["force-level2", prm_file],
+                             options=["--cleanenv"])
+
+        for line in out:
+            print(line, end='')
 
     else:
-        print("#### Processing cancelled...")
+        print("\n#### Processing cancelled...")
 
 
 def _mod_force_default_prm(settings, sensor):
@@ -167,7 +164,7 @@ def _check_force_file_queue(prm_path):
 
     ## Before starting the batch processing, ask for user confirmation. Return boolean depending on answer.
     while True:
-        answer = input(f"The following queue file will be queried by FORCE: {queue_path}\n"
+        answer = input(f"\nThe following queue file will be queried by FORCE: {queue_path}\n"
                        f"{n_done} scenes are marked as 'DONE' \n{n_queued} scenes are marked as 'QUEUED'\n"
                        f"Do you want to proceed with the batch processing of all {n_queued} scenes marked as 'QUEUED'?"
                        f" (y/n)")
@@ -179,5 +176,5 @@ def _check_force_file_queue(prm_path):
             return False
 
         else:
-            print(f"{answer} is not a valid answer!")
+            print(f"\n{answer} is not a valid answer!")
             continue

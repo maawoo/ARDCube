@@ -78,17 +78,17 @@ def download_sar(settings):
                        f"Do you want to proceed with the download? (y/n)")
 
         if answer in ['y', 'yes']:
-            print("#### Starting download...")
+            print("\n#### Starting download...")
             api.download_all(query,
                              directory_path=out_dir)
             break
 
         elif answer in ['n', 'no']:
-            print("#### Download cancelled...")
+            print("\n#### Download cancelled...")
             break
 
         else:
-            print(f"{answer} is not a valid answer!")
+            print(f"\n{answer} is not a valid answer!")
             continue
 
 
@@ -135,25 +135,26 @@ def download_optical(settings, sensor, debug_force=False):
 
         if answer in ['y', 'yes']:
 
-            print("#### Starting download... \n"
-                  "Depending on the dataset size and your internet speed, this might take a while. \n"
-                  "Unfortunately there's currently no good solution to show the download progress. \n"
+            print("\n#### Starting download... \n"
                   "If the download takes longer than you intended, you can just cancel the process \n"
-                  "and start it again at a later time using the same settings in the settings.prm file. \n"
-                  "FORCE automatically checks for existing scenes and will only download new scenes!")
+                  "and start it again at a later time using the same settings. \n"
+                  "Only incomplete and new scenes will be downloaded!\n")
 
-            Client.execute(FORCE_PATH, ["force-level1-csd", "-s", force_abbr, "-d", daterange,
-                                        "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
-                           options=["--cleanenv"])
+            out = Client.execute(FORCE_PATH, ["force-level1-csd", "-s", force_abbr, "-d", daterange,
+                                              "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
+                                 options=["--cleanenv"], stream=True)
+
+            for line in out:
+                print(line, end='')
 
             break
 
         elif answer in ['n', 'no']:
-            print("#### Download cancelled...")
+            print("\n#### Download cancelled...")
             break
 
         else:
-            print(f"{answer} is not a valid answer!")
+            print(f"\n{answer} is not a valid answer!")
             continue
 
 
@@ -161,17 +162,23 @@ def _download_meta_catalogues(meta_dir):
     """Download metadata catalogues necessary for downloading via FORCE if user confirms."""
 
     while True:
-        answer = input(f"{meta_dir} does not exist. \nTo download datasets via FORCE, it is necessary to have "
+        answer = input(f"\n{meta_dir} does not exist. \nTo download datasets via FORCE, it is necessary to have "
                        f"metadata catalogues stored in a local directory.\n "
                        f"Do you want to download the latest catalogues into {meta_dir}? (y/n)")
 
         if answer in ['y', 'yes']:
+            print("\n#### Starting download...")
             os.makedirs(meta_dir)
-            Client.execute(FORCE_PATH, ["force-level1-csd", "-u", meta_dir], options=["--cleanenv"])
+            out = Client.execute(FORCE_PATH, ["force-level1-csd", "-u", meta_dir],
+                                 options=["--cleanenv"], stream=True)
+
+            for line in out:
+                print(line, end='')
 
         elif answer in ['n', 'no']:
+            print("\n#### Download cancelled...")
             sys.exit()
 
         else:
-            print(f"{answer} is not a valid answer!")
+            print(f"\n{answer} is not a valid answer!")
             continue
