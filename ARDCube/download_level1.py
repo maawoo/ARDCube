@@ -114,11 +114,12 @@ def download_optical(settings, sensor, debug_force=False):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
+    queue_file = os.path.join(out_dir, 'queue.txt')
     aoi_path = get_aoi_path(settings)
 
     ## Send query to FORCE Singularity container as dry run first ("--no-act") and print output
     output = Client.execute(FORCE_PATH, ["force-level1-csd", "--no-act", "-s", force_abbr, "-d", daterange,
-                                         "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
+                                         "-c", cloudcover, meta_dir, out_dir, queue_file, aoi_path],
                             options=["--cleanenv"])
 
     if isinstance(output, list):
@@ -141,7 +142,7 @@ def download_optical(settings, sensor, debug_force=False):
                   "Only incomplete and new scenes will be downloaded!\n")
 
             out = Client.execute(FORCE_PATH, ["force-level1-csd", "-s", force_abbr, "-d", daterange,
-                                              "-c", cloudcover, meta_dir, out_dir, "queue.txt", aoi_path],
+                                              "-c", cloudcover, meta_dir, out_dir, queue_file, aoi_path],
                                  options=["--cleanenv"], stream=True)
 
             for line in out:
