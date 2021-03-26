@@ -16,7 +16,7 @@ def generate_ard(sensor, debug_force=False):
     ## Get user defined settings
     settings = get_settings()
 
-    ##
+    ## Check if associated level-1 dataset exists in expected directory
     level1_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
     if not os.path.isdir(level1_dir):
         raise NotADirectoryError(f"{level1_dir} not found. \nDoes level-1 data for {sensor} exist?\n"
@@ -49,11 +49,11 @@ def process_optical(settings, sensor, debug_force=False):
 
     Client.debug = debug_force
 
-    ## If UseDefault = True, a copy of FORCE_default_template.prm will automatically be filled with all necessary
-    ## information and used for processing. If UseDefault = False, the file FORCE_custom.prm will be used for
-    ## processing and not changed in any way!
-    if settings.getboolean('PROCESSING', 'UseDefault'):  # = if True / Will also raise an error if field is not boolean
-        prm_file = _mod_force_default_prm(settings, sensor)
+    ## If UseDefault = True, a timestamped copy of FORCE_default__template.prm will be filled with all necessary
+    ## information and used for processing.
+    ## If UseDefault = False, the file FORCE_custom.prm will be used for processing as-is.
+    if settings.getboolean('PROCESSING', 'UseDefault'):
+        prm_file = _mod_force_template_prm(settings, sensor)
     else:
         prm_file = os.path.join(ROOT_DIR, 'misc/force', 'FORCE_custom.prm')
 
@@ -61,7 +61,7 @@ def process_optical(settings, sensor, debug_force=False):
     ## The function asks for user confirmation and returns a boolean.
     check = _check_force_file_queue(prm_file)
 
-    if check:  # if answer was 'yes', start processing
+    if check:
         print("\n#### Start processing...")
 
         out = Client.execute(FORCE_PATH, ["force-level2", prm_file],
@@ -74,14 +74,14 @@ def process_optical(settings, sensor, debug_force=False):
         print("\n#### Processing cancelled...")
 
 
-def _mod_force_default_prm(settings, sensor):
+def _mod_force_template_prm(settings, sensor):
     """..."""
 
-    ## Get DataDirectory from settings
+    ## Get DataDirectory
     data_dir = settings['GENERAL']['DataDirectory']
 
     ## Get path to default parameter file
-    prm_path = os.path.join(ROOT_DIR, 'misc/force', 'FORCE_default.prm')
+    prm_path = os.path.join(ROOT_DIR, 'misc/force', 'FORCE_default__template.prm')
     if not os.path.isfile(prm_path):
         raise FileNotFoundError(f"{prm_path} could not be found.")
 
@@ -89,7 +89,7 @@ def _mod_force_default_prm(settings, sensor):
     with open(prm_path, 'r') as file:
         lines = file.readlines()
 
-    ## Get all necessary information for the parameter file
+    ## Get all necessary information to fill parameters that are not pre-defined
     file_queue = os.path.join(data_dir, f'level1/{sensor}', 'pool.txt')
     dir_level2 = os.path.join(data_dir, f'level2/{sensor}')
     dir_log = os.path.join(data_dir, f'log/{sensor}')
@@ -115,18 +115,18 @@ def _mod_force_default_prm(settings, sensor):
     for p in parameters:
         ind = [i for i, item in enumerate(lines) if item.startswith(p)]
         if len(ind) != 1:
-            raise IndexError(f"The field '{p}' was found more than once in FORCE_default.prm, which should not be "
-                             f"the case!")
-
-        indexes.append(ind[0])
+            raise IndexError(f"The field '{p}' was found more than once in FORCE_default__template.prm, which "
+                             f"should not be the case!")
+        else:
+            indexes.append(ind[0])
 
     ## Change parameter fields at selected indexes
     for p, v, i in zip(parameters, values, indexes):
         lines[i] = f"{p} = {v}\n"
 
-    ## Create copy of FORCE_default.prm with adjusted parameter fields and return its path
+    ## Create copy of FORCE_default__template.prm with adjusted parameter fields and return its path
     now = datetime.now().strftime('%Y%m%dT%H%M%S')
-    prm_path_new = os.path.join(ROOT_DIR, 'misc/force', f'FORCE_default__{now}.prm')
+    prm_path_new = os.path.join(ROOT_DIR, 'misc/force', f"FORCE_default__{now}.prm")
     with open(prm_path_new, 'w') as file:
         file.writelines(lines)
 
@@ -143,7 +143,7 @@ def _check_force_file_queue(prm_path):
     ## Return index of 'FILE_QUEUE' parameter field
     ind = [i for i, item in enumerate(lines) if item.startswith('FILE_QUEUE')]
 
-    ## Check if field exists and for duplicate entries, just to be sure..
+    ## Check if field exists and for duplicate entries, just to be sure...
     if len(ind) > 1:
         raise IndexError(f"The field 'FILE_QUEUE' was found more than once in '{prm_path}'")
     elif len(ind) == 0:
