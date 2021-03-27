@@ -161,9 +161,11 @@ def get_grid_info(file_dict_entry):
     src = rasterio.open(file_dict_entry[0])
     shape = list(src.shape)
     transform = list(src.transform)
+    crs = src.crs.wkt
+
     src.close()
 
-    return shape, transform
+    return shape, transform, crs
 
 
 def get_measurements(file_dict_entry, band_names):
@@ -253,7 +255,7 @@ def create_eo3_yaml(file_dict, product_dict):
 
     for key in list(file_dict.keys()):
 
-        shape, transform = get_grid_info(file_dict[key])
+        shape, transform, crs_wkt = get_grid_info(file_dict[key])
         measurements = get_measurements(file_dict[key], band_names)
         meta = get_metadata(file_dict[key])
 
@@ -261,7 +263,7 @@ def create_eo3_yaml(file_dict, product_dict):
             'id': str(uuid.uuid4()),
             '$schema': 'https://schemas.opendatacube.org/dataset',
             'product': {'name': product_name},
-            'crs': f"{crs}",
+            'crs': f"{crs_wkt}",
             'grids': {'default': {'shape': shape, 'transform': transform}
                       },
             'measurements': measurements,
@@ -301,14 +303,14 @@ overwrite = True
 ## Set paths
 data_dir = '/home/marco/pypypy/ARDCube_data'
 code_dir = '/home/marco/pypypy/ARDCube'
-l8_product = os.path.join(code_dir, 'misc/odc/product_definitions', 'landsat8.yaml')
-s2_product = os.path.join(code_dir, 'misc/odc/product_definitions', 'sentinel2.yaml')
-s1_product = os.path.join(code_dir, 'misc/odc/product_definitions', 'sentinel1.yaml')
+#l8_product = os.path.join(code_dir, 'misc/odc', 'landsat8_glance.yaml')
+s2_product = os.path.join(code_dir, 'misc/odc', 'sentinel2_glance.yaml')
+#s1_product = os.path.join(code_dir, 'misc/odc', 'sentinel1_glance.yaml')
 
 time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 log_path = os.path.join(data_dir, 'log', f'{time}__eo3_prepare_failed_checksum.log')
 logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')  # save to file
 
-main(os.path.join(data_dir, 'level-2/L8_30'), l8_product, overwrite)
-main(os.path.join(data_dir, 'level-2/S1_20'), s1_product, overwrite)
-main(os.path.join(data_dir, 'level-2/S2_10'), s2_product, overwrite)
+#main(os.path.join(data_dir, 'level2/Landsat8_glance7'), l8_product, overwrite)
+#main(os.path.join(data_dir, 'level2/Sentinel1_glance7'), s1_product, overwrite)
+main(os.path.join(data_dir, 'level2/Sentinel2_glance7'), s2_product, overwrite)
