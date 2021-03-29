@@ -65,7 +65,7 @@ def process_optical(settings, sensor, debug_force=False):
         print("\n#### Start processing...")
 
         out = Client.execute(FORCE_PATH, ["force-level2", prm_file],
-                             options=["--cleanenv"])
+                             options=["--cleanenv"], stream=True)
 
         for line in out:
             print(line, end='')
@@ -90,7 +90,7 @@ def _mod_force_template_prm(settings, sensor):
         lines = file.readlines()
 
     ## Get all necessary information to fill parameters that are not pre-defined
-    file_queue = os.path.join(data_dir, f'level1/{sensor}', 'pool.txt')
+    file_queue = os.path.join(data_dir, f'level1/{sensor}', 'queue.txt')
     dir_level2 = os.path.join(data_dir, f'level2/{sensor}')
     dir_log = os.path.join(data_dir, f'log/{sensor}')
     dir_tmp = os.path.join(data_dir, 'temp')
