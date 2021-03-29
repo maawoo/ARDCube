@@ -1,3 +1,6 @@
+from ARDCube.config import ROOT_DIR
+from ARDCube.utils import get_settings
+
 import os
 import re
 import glob
@@ -8,22 +11,31 @@ from datetime import datetime
 import rasterio
 
 
-def main(file_dir, product_path, overwrite=None):
+def prepare_odc(sensor, overwrite=True):
 
-    assert isinstance(overwrite, bool), 'Parameter \'overwrite\' is expected to be set to True or False!'
+    ## Get user defined settings
+    settings = get_settings()
+
+    level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', sensor)
+    odc_product_path = os.path.join(ROOT_DIR, 'misc/odc', f"{sensor}.yaml")
 
     ## Create product dictionary
-    product_dict = read_product(product_path)
+    product_dict = read_product(product_path=odc_product_path)
 
     ## Create file dictionary
-    file_dict = create_file_dict(file_dir, product_dict)
+    file_dict = create_file_dict(settings=settings,
+                                 sensor=sensor,
+                                 level2_dir=level2_dir)
 
     ## Check for existing YAML files and create new dict, if overwrite is set to 'False'
     if overwrite is False:
-        file_dict = check_file_dict(file_dir, file_dict)
+        file_dict = check_file_dict(level2_dir=level2_dir,
+                                    file_dict=file_dict)
 
     ## Create metadata YAML files in EO3 format
-    create_eo3_yaml(file_dict, product_dict)
+    create_eo3_yaml(file_dict=file_dict,
+                    product_dict=product_dict,
+                    sensor=sensor)
 
     return product_dict
 
@@ -35,34 +47,36 @@ def read_product(product_path):
         yaml_dict = yaml.safe_load(f)
 
     name = yaml_dict['name']
-    satellite = yaml_dict['metadata']['properties']['eo:constellation']
     crs = yaml_dict['storage']['crs']
     res = yaml_dict['storage']['resolution']['x']
     band_names = [yaml_dict['measurements'][i]['name'] for i in range(len(yaml_dict['measurements']))]
 
-    return {'name': name, 'satellite': satellite, 'crs': crs, 'res': res, 'band_names': band_names}
+    return {'name': name, 'crs': crs, 'res': res, 'band_names': band_names}
 
 
-def create_file_dict(file_dir, product_dict):
+def create_file_dict(settings, sensor, level2_dir):
     """Recursively searches a given directory for matching GeoTIFF files. Files that return a checksum of 0 for all
     bands will not be included and their path will be stored in a logfile.
 
-    :param file_dir: Path of the file directory. Subdirectories are also searched.
-    :param product_dict: Product dictionary created by read_product()
+    :param settings:
+    :param level2_dir: Path of the file directory. Subdirectories are also searched.
+    :param sensor:
 
     :return: Dictionary of the form
         {'tileid__datestring': ['path/to/band_1.tif', 'path/to/band_2.tif', ...]}
         or
         {'tileid__datestring': ['path/to/multiband.tif']}
     """
+    time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_path = os.path.join(settings['GENERAL']['DataDirectory'], 'log', f'{time}__eo3_prepare_failed_checksum.log')
 
-    if product_dict['satellite'] == 'sentinel-1':
+    if sensor == 'sentinel1':
         f_pattern = '**/*.tif'
     else:
         f_pattern = '**/*BOA.tif'
 
     dict_out = {}
-    for f in glob.iglob(os.path.join(file_dir, f_pattern), recursive=True):
+    for f in glob.iglob(os.path.join(level2_dir, f_pattern), recursive=True):
         if sum(_get_checksums(f)) != 0:
 
             ## Create identity key for each file based on date string and tile ID
@@ -78,16 +92,17 @@ def create_file_dict(file_dir, product_dict):
 
         else:
             ## Log file path if sum of checksums is 0, which means that something is likely wrong with that file
+            logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')
             logging.info(f)
 
     return dict_out
 
 
-def check_file_dict(file_dir, file_dict):
+def check_file_dict(level2_dir, file_dict):
     """Recursively searches for existing YAML files in the given directory. If YAML files are found, the input file
     dictionary will be filtered for entries that don't have an associated YAML file already.
 
-    :param file_dir: Path of the file directory. Subdirectories are also searched.
+    :param level2_dir: Path of the file directory. Subdirectories are also searched.
     :param file_dict: Dictionary created by create_file_dict()
 
     :return: Dictionary of the same form as the input dictionary (see create_file_dict() for examples).
@@ -95,7 +110,7 @@ def check_file_dict(file_dir, file_dict):
 
     ## Search for existing YAML-files in the file directory and use same identification as in create_file_dict()
     yaml_dict = {}
-    for f in glob.iglob(os.path.join(file_dir, '**/*.yaml'), recursive=True):
+    for f in glob.iglob(os.path.join(level2_dir, '**/*.yaml'), recursive=True):
 
         ## Create identity key for each file based on date string and tile ID
         identity = _create_identity_string(f)
@@ -120,13 +135,14 @@ def check_file_dict(file_dir, file_dict):
         return file_dict
 
 
-def create_eo3_yaml(file_dict, product_dict):
+def create_eo3_yaml(file_dict, product_dict, sensor):
     """Creates a YAML file for each entry of the input file dictionary. The YAML files are stored in EO3 format so they
     can be index into an Open Data Cube instance. For more information see:
     https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html
 
     :param file_dict: Dictionary created by create_file_dict() or filtered by check_file_dict().
     :param product_dict: Product dictionary created by read_product()
+    :param sensor:
 
     :return: YAML file
     """
@@ -137,7 +153,7 @@ def create_eo3_yaml(file_dict, product_dict):
 
     ## The index 'ind_outname' is used in the for-loop to name the generated YAML-files based on the input files.
     ## Both FORCE and pyroSAR use their own naming conventions, so file names should be consistent.
-    if product_dict['satellite'] == 'sentinel-1':
+    if sensor == 'sentinel1':
         ind_outname = 27
     else:
         ind_outname = 25
@@ -291,26 +307,21 @@ def _get_metadata(file_dict_entry):
     :return: Dictionary with entries for each metadata field.
     """
 
-    dict_out = {}
-    dict_out['datetime'] = _format_date_string(_get_date_string(file_dict_entry[0]))
+    date = _format_date_string(_get_date_string(file_dict_entry[0]))
+
+    if len(file_dict_entry) > 1:
+        file = os.path.basename(file_dict_entry[0])
+
+        if file[10:11] == 'A':
+            orbit = 'asc'
+        elif file[10:11] == 'D':
+            orbit = 'desc'
+        else:
+            orbit = None
+    else:
+        orbit = None
+
+    dict_out = {'datetime': date,
+                'sat:orbit_state': orbit}
 
     return dict_out
-
-
-## True = existing YAML-files will be overwritten // False = YAML-files will only be generated for new files
-overwrite = True
-
-## Set paths
-data_dir = '/home/marco/pypypy/ARDCube_data'
-code_dir = '/home/marco/pypypy/ARDCube'
-#l8_product = os.path.join(code_dir, 'misc/odc', 'landsat8_glance.yaml')
-s2_product = os.path.join(code_dir, 'misc/odc', 'sentinel2_glance.yaml')
-#s1_product = os.path.join(code_dir, 'misc/odc', 'sentinel1_glance.yaml')
-
-time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-log_path = os.path.join(data_dir, 'log', f'{time}__eo3_prepare_failed_checksum.log')
-logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')  # save to file
-
-#main(os.path.join(data_dir, 'level2/Landsat8_glance7'), l8_product, overwrite)
-#main(os.path.join(data_dir, 'level2/Sentinel1_glance7'), s1_product, overwrite)
-main(os.path.join(data_dir, 'level2/Sentinel2_glance7'), s2_product, overwrite)
