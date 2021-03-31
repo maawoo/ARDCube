@@ -2,12 +2,12 @@
 
 # This is the DEFAULT parameter file used to process Analysis Ready Data using FORCE.
 # This file will be used automatically if the field 'UseDefault' in settings.prm is set to True.
-# All fields that use FILL as input, will be modified by the ARDCube scripts using information
+# All fields marked with 'FILL', will be modified by the ARDCube scripts using information
 # that was provided in the settings.prm file. This template file will not be overwritten. Instead,
 # a timestamped copy will be saved in this directory including all modifications by ARDCube scripts.
 
 # You can also fully customize the processing parameters by changing the field 'UseDefault' in 
-# settings.prm to False and using the FORCE_custom.prm file instead. 
+# settings.prm to False and use the FORCE_custom.prm file instead.
 
 # You can find a more detailed description of all parameters in FORCE_parameter_description.prm. 
 # More information on the level-2 processing can also be found in the FORCE docs:
@@ -100,7 +100,7 @@ TIER = 1
 NPROC = FILL
 NTHREAD = FILL
 PARALLEL_READS = FALSE
-DELAY = 3
+DELAY = 5
 TIMEOUT_ZIP = 30
 
 # OUTPUT OPTIONS
