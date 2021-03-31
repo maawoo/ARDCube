@@ -49,13 +49,9 @@ def process_optical(settings, sensor, debug_force=False):
 
     Client.debug = debug_force
 
-    ## If UseDefault = True, a timestamped copy of FORCE_default__template.prm will be filled with all necessary
-    ## information and used for processing.
-    ## If UseDefault = False, the file FORCE_custom.prm will be used for processing as-is.
-    if settings.getboolean('PROCESSING', 'UseDefault'):
-        prm_file = _mod_force_template_prm(settings, sensor)
-    else:
-        prm_file = os.path.join(ROOT_DIR, 'misc/force', 'FORCE_custom.prm')
+    ## A timestamped copy of FORCE_params__template.prm will be filled with all necessary information and
+    ## used for processing.
+    prm_file = _mod_force_template_prm(settings, sensor)
 
     ## Get path to file queue from parameter file and check how many scenes will be processed.
     ## The function asks for user confirmation and returns a boolean.
@@ -81,7 +77,7 @@ def _mod_force_template_prm(settings, sensor):
     data_dir = settings['GENERAL']['DataDirectory']
 
     ## Get path to default parameter file
-    prm_path = os.path.join(ROOT_DIR, 'misc/force', 'FORCE_default__template.prm')
+    prm_path = os.path.join(ROOT_DIR, 'settings/force', 'FORCE_params__template.prm')
     if not os.path.isfile(prm_path):
         raise FileNotFoundError(f"{prm_path} could not be found.")
 
@@ -115,7 +111,7 @@ def _mod_force_template_prm(settings, sensor):
     for p in parameters:
         ind = [i for i, item in enumerate(lines) if item.startswith(p)]
         if len(ind) != 1:
-            raise IndexError(f"The field '{p}' was found more than once in FORCE_default__template.prm, which "
+            raise IndexError(f"The field '{p}' was found more than once in FORCE_params__template.prm, which "
                              f"should not be the case!")
         else:
             indexes.append(ind[0])
@@ -124,9 +120,9 @@ def _mod_force_template_prm(settings, sensor):
     for p, v, i in zip(parameters, values, indexes):
         lines[i] = f"{p} = {v}\n"
 
-    ## Create copy of FORCE_default__template.prm with adjusted parameter fields and return its path
+    ## Create copy of FORCE_params__template.prm with adjusted parameter fields and return its path
     now = datetime.now().strftime('%Y%m%dT%H%M%S')
-    prm_path_new = os.path.join(ROOT_DIR, 'misc/force', f"FORCE_default__{now}.prm")
+    prm_path_new = os.path.join(ROOT_DIR, 'settings/force', f"FORCE_params__{now}.prm")
     with open(prm_path_new, 'w') as file:
         file.writelines(lines)
 
