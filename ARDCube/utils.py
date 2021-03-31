@@ -8,13 +8,15 @@ from spython.main import Client
 def get_settings():
     """Gets the path of the settings file, reads it, checks it and returns it as a ConfigParser object."""
 
+    set_dir = os.path.join(ROOT_DIR, 'settings')
+
     ## Get path of settings file. Ask for input, if not found in current work directory.
-    if 'settings.prm' not in os.listdir(ROOT_DIR):
-        s_path = input(f"'settings.prm' could not be found in {ROOT_DIR}.\n"
+    if 'settings.prm' not in os.listdir(set_dir):
+        s_path = input(f"'settings.prm' could not be found in {set_dir}.\n"
                        f"Please provide the full path to your settings file "
                        f"(e.g. '/path/to/settings.prm'): ")
     else:
-        s_path = os.path.join(ROOT_DIR, 'settings.prm')
+        s_path = os.path.join(set_dir, 'settings.prm')
 
     ## Read settings file
     settings = configparser.ConfigParser(allow_no_value=True)
