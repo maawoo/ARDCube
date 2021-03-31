@@ -1,16 +1,13 @@
-name: s2_ARD_10
-description: Sentinel-2 A/B ARD - 10m
+name: s2_ARD
+description: Sentinel-2 A/B ARD - 10m resolution - Glance7 grid
 metadata_type: eo3
 
 metadata:
     product:
-      name: s2_ARD_10
-#    properties:
-#        eo:platform: ["sentinel-2a","sentinel-2b"]
-#        eo:constellation: sentinel-2
+      name: s2_ARD
 
 storage:
-    crs: EPSG:25832
+    crs: PROJCS["BU MEaSUREs Lambert Azimuthal Equal Area - EU - V01",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Lambert_Azimuthal_Equal_Area"],PARAMETER["latitude_of_center",55],PARAMETER["longitude_of_center",20],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1],AXIS["Easting",EAST],AXIS["Northing",NORTH]]
     resolution:
         x: 10
         y: -10

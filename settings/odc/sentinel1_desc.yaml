@@ -1,0 +1,24 @@
+name: s1_ARD_desc
+description: Sentinel-1 A/B ARD - Descending orbit - 20m resolution - Glance7 grid
+metadata_type: eo3
+
+metadata:
+    product:
+        name: s1_ARD_desc
+
+storage:
+    crs: PROJCS["BU MEaSUREs Lambert Azimuthal Equal Area - EU - V01",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Lambert_Azimuthal_Equal_Area"],PARAMETER["latitude_of_center",55],PARAMETER["longitude_of_center",20],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1],AXIS["Easting",EAST],AXIS["Northing",NORTH]]
+    resolution:
+        x: 20
+        y: -20
+
+measurements:
+    - name: 'VH'
+      dtype: float32
+      nodata: 0
+      units: 'db - gamma0'
+
+    - name: 'VV'
+      dtype: float32
+      nodata: 0
+      units: 'db - gamma0'
