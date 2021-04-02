@@ -4,7 +4,7 @@ metadata_type: eo3
 
 metadata:
     product:
-      name: s2_ARD
+        name: s2_ARD
 
 storage:
     crs: PROJCS["BU MEaSUREs Lambert Azimuthal Equal Area - EU - V01",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Lambert_Azimuthal_Equal_Area"],PARAMETER["latitude_of_center",55],PARAMETER["longitude_of_center",20],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1],AXIS["Easting",EAST],AXIS["Northing",NORTH]]
@@ -62,3 +62,62 @@ measurements:
       dtype: int16
       nodata: -9999
       units: '1'
+
+    - name: 'pixel_qa'
+        ## https://force-eo.readthedocs.io/en/latest/howto/qai.html#quality-bits-in-force
+        dtype: uint16
+        nodata: 1
+        units: 'bit_index'
+        flags_definition:
+          valid_data:
+            bits: 0
+            description: Valid data
+            values: { 0: valid, 1: no_data }
+          cloud_state:
+            bits: [ 1, 2 ]
+            description: Cloud state (less_confident=i.e. buffered cloud 300m; confident=opaque cloud)
+            values: { 0: clear, 1: less_confident, 2: confident, 3: cirrus }
+          cloud_shadow_flag:
+            bits: 3
+            description: Cloud shadow flag
+            values: { 0: no, 1: yes }
+          snow_flag:
+            bits: 4
+            description: Snow flag
+            values: { 0: no, 1: yes }
+          water_flag:
+            bits: 5
+            description: Water flag
+            values: { 0: no, 1: yes }
+          aerosol_state:
+            bits: [ 6, 7 ]
+            description: Aerosol state (estimated=best quality; interpolated=mid quality;
+            high=aerosol optical depth > 0.6, use with caution; fill=global fallback, low quality)
+            values: { 0: estimated, 1: interpolated, 2: high, 3: fill }
+          subzero_flag:
+            bits: 8
+            description: Subzero flag (yes=use with caution)
+            values: { 0: no, 1: yes }
+          saturation_flag:
+            bits: 9
+            description: Saturation flag (yes=use with caution)
+            values: { 0: no, 1: yes }
+          high_sun_zenith_flag:
+            bits: 10
+            description: High sun zenith flag (yes=sun elevation < 15°, use with caution)
+            values: { 0: no, 1: yes }
+          illumination_state:
+            bits: [ 11, 12 ]
+            description: Illumination state (good=incidence angle < 55°, best quality for top. correction;
+            medium=incidence angle 55°–80°, good quality for top. correction;
+            poor=incidence angle > 80°, low quality for top. correction;
+            shadow=incidence angle > 90°, no top. correction applied)
+            values: { 0: good, 1: medium, 2: poor, 3: shadow }
+          slope_flag:
+            bits: 13
+            description: Slope flag (no=cosine correction applied; yes=enhanced C-correction applied)
+            values: { 0: no, 1: yes }
+          water_vapor_flag:
+            bits: 14
+            description: Water vapor flag (measured=best quality, only Sentinel-2; fill=scene average, only Sentinel-2)
+            values: { 0: measured, 1: fill }
