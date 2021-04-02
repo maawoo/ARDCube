@@ -2,11 +2,12 @@ from ARDCube.config import ROOT_DIR, FORCE_PATH, PYROSAR_PATH, SAT_DICT
 from ARDCube.utils import get_settings, get_dem_path
 
 import os
+from pathlib import Path
 from datetime import datetime
 from spython.main import Client
 
 
-def generate_ard(sensor, debug_force=False):
+def generate_ard(sensor, debug_force=False, mosaics=True):
     """..."""
 
     ## Check if sensor is supported.
@@ -31,7 +32,8 @@ def generate_ard(sensor, debug_force=False):
     else:
         process_optical(settings=settings,
                         sensor=sensor,
-                        debug_force=debug_force)
+                        debug_force=debug_force,
+                        mosaics=mosaics)
 
 
 def process_sar(settings):
@@ -44,14 +46,14 @@ def process_sar(settings):
     ## TODO: Implement SAR processing with pyroSAR container
 
 
-def process_optical(settings, sensor, debug_force=False):
+def process_optical(settings, sensor, debug_force=False, mosaics=True):
     """..."""
 
     Client.debug = debug_force
 
     ## A timestamped copy of FORCE_params__template.prm will be filled with all necessary information and
     ## used for processing.
-    prm_file = _mod_force_template_prm(settings, sensor)
+    prm_file, out_dir = _mod_force_template_prm(settings, sensor)
 
     ## Get path to file queue from parameter file and check how many scenes will be processed.
     ## The function asks for user confirmation and returns a boolean.
@@ -59,6 +61,9 @@ def process_optical(settings, sensor, debug_force=False):
 
     if check:
         print("\n#### Start processing...")
+        print("\nUnfortunately the output printed by force-level2 cannot be streamed at the moment, which means that \n"
+              "you cannot track the progress in here. However, you can regularly check the queue file mentioned \n"
+              "above to see if the processing continues as expected.")
 
         out = Client.execute(FORCE_PATH, ["force-level2", prm_file],
                              options=["--cleanenv"], stream=True)
@@ -68,6 +73,11 @@ def process_optical(settings, sensor, debug_force=False):
 
     else:
         print("\n#### Processing cancelled...")
+
+    ## Create VRT mosaics when finished processing
+    if mosaics:
+        print("\n#### Creating VRT mosaics...")
+        _create_mosaics(out_dir)
 
 
 def _mod_force_template_prm(settings, sensor):
@@ -131,7 +141,7 @@ def _mod_force_template_prm(settings, sensor):
     with open(prm_path_new, 'w') as file:
         file.writelines(lines)
 
-    return prm_path_new
+    return prm_path_new, dir_level2
 
 
 def _check_force_file_queue(prm_path):
@@ -179,3 +189,22 @@ def _check_force_file_queue(prm_path):
         else:
             print(f"\n{answer} is not a valid answer!")
             continue
+
+
+def _create_mosaics(dir_level2):
+    """Search for datacube-definition.prj and execute force-mosaic to create VRT mosaics for a given dataset. More info:
+    https://force-eo.readthedocs.io/en/latest/howto/datacube.html#how-to-visualize-data-for-a-large-extent-more-conveniently"""
+
+    prj_path = []
+    for path in Path(dir_level2).rglob('datacube-definition.prj'):
+        prj_path.append(path)
+
+    if len(prj_path) == 1:
+        Client.execute(FORCE_PATH, ["force-mosaic", prj_path[0].parent],
+                       options=["--cleanenv"])
+    elif len(prj_path) < 1:
+        raise FileNotFoundError(f"Failed to run 'force-mosaic' because 'datacube-definition.prj' could not be found in "
+                                f"any subdirectory of {dir_level2}.")
+    elif len(prj_path) > 1:
+        raise RuntimeError(f"Failed to run 'force-mosaic' because multiple files called 'datacube-definition.prj'"
+                           f"were found in subdirectories of {dir_level2}. Only one was expected.")
