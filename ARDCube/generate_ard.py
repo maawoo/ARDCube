@@ -1,13 +1,14 @@
 from ARDCube.config import ROOT_DIR, FORCE_PATH, PYROSAR_PATH, SAT_DICT
-from ARDCube.utils import get_settings, get_dem_path
+from ARDCube.utils import get_settings, get_aoi_path, get_dem_path
 
 import os
 from pathlib import Path
 from datetime import datetime
 from spython.main import Client
+import fiona
 
 
-def generate_ard(sensor, debug_force=False, mosaics=True):
+def generate_ard(sensor, debug_force=False):
     """..."""
 
     ## Check if sensor is supported.
@@ -32,8 +33,7 @@ def generate_ard(sensor, debug_force=False, mosaics=True):
     else:
         process_optical(settings=settings,
                         sensor=sensor,
-                        debug_force=debug_force,
-                        mosaics=mosaics)
+                        debug_force=debug_force)
 
 
 def process_sar(settings):
@@ -45,10 +45,14 @@ def process_sar(settings):
     if not os.path.exists(level2_dir):
         os.makedirs(level2_dir)
 
-    ## TODO: Implement SAR processing with pyroSAR container
+    # force_cube(level2_dir=out_dir)
+
+    ## Create VRT mosaics and grid in KML format
+    # force_mosaic(level2_dir=out_dir)
+    # force_kml_grid(level2_dir=out_dir)
 
 
-def process_optical(settings, sensor, debug_force=False, mosaics=True):
+def process_optical(settings, sensor, debug_force=False):
     """..."""
 
     Client.debug = debug_force
@@ -73,13 +77,12 @@ def process_optical(settings, sensor, debug_force=False, mosaics=True):
         for line in out:
             print(line, end='')
 
+        ## Create VRT mosaics and KML grid
+        force_mosaic(level2_dir=out_dir)
+        force_kml_grid(level2_dir=out_dir)
+
     else:
         print("\n#### Processing cancelled...")
-
-    ## Create VRT mosaics when finished processing
-    if mosaics:
-        print("\n#### Creating VRT mosaics...")
-        _create_mosaics(out_dir)
 
 
 def _mod_force_template_prm(settings, sensor):
@@ -193,20 +196,65 @@ def _check_force_file_queue(prm_path):
             continue
 
 
-def _create_mosaics(dir_level2):
-    """Search for datacube-definition.prj and execute force-mosaic to create VRT mosaics for a given dataset. More info:
-    https://force-eo.readthedocs.io/en/latest/howto/datacube.html#how-to-visualize-data-for-a-large-extent-more-conveniently"""
+def get_datacubeprj_dir(level2_dir):
+    """Recursively searches for 'datacube-definition.prj' in a level-2 directory and returns its parent directory."""
 
     prj_path = []
-    for path in Path(dir_level2).rglob('datacube-definition.prj'):
+    for path in Path(level2_dir).rglob('datacube-definition.prj'):
         prj_path.append(path)
 
-    if len(prj_path) == 1:
-        Client.execute(FORCE_PATH, ["force-mosaic", prj_path[0].parent],
-                       options=["--cleanenv"])
-    elif len(prj_path) < 1:
-        raise FileNotFoundError(f"Failed to run 'force-mosaic' because 'datacube-definition.prj' could not be found in "
-                                f"any subdirectory of {dir_level2}.")
+    if len(prj_path) < 1:
+        raise FileNotFoundError(f"'datacube-definition.prj' could not be found in any subdirectory of {level2_dir}")
     elif len(prj_path) > 1:
-        raise RuntimeError(f"Failed to run 'force-mosaic' because multiple files called 'datacube-definition.prj'"
-                           f"were found in subdirectories of {dir_level2}. Only one was expected.")
+        raise RuntimeError(f"Multiple files called 'datacube-definition.prj' were found in subdirectories of "
+                           f"{level2_dir}. Only one file was expected.")
+    else:
+        return prj_path[0].parent
+
+
+def force_kml_grid(level2_dir, aoi_path=None):
+    """..."""
+
+    ## Use AOI defined in settings.prm if no other path is provided
+    if aoi_path is None:
+        aoi_path = get_aoi_path(get_settings())
+
+    ## Get directory of datacube-definition.prj
+    prj_dir = get_datacubeprj_dir(level2_dir)
+
+    ## Get AOI bounds and add a buffer of 0.5°
+    with fiona.open(aoi_path) as f:
+        bottom = f.bounds[1] + 0.5
+        top = f.bounds[3] + 0.5
+        left = f.bounds[0] + 0.5
+        right = f.bounds[2] + 0.5
+
+    ## Execute FORCE command with Singularity container
+    Client.execute(FORCE_PATH, ["force-tabulate-grid", prj_dir, bottom, top, left, right, "kml"],
+                   options=["--cleanenv"])
+
+
+def force_mosaic(level2_dir):
+    """..."""
+
+    ## Get directory of datacube-definition.prj
+    prj_dir = get_datacubeprj_dir(level2_dir)
+
+    ## Execute FORCE command with Singularity container
+    Client.execute(FORCE_PATH, ["force-mosaic", prj_dir],
+                   options=["--cleanenv"])
+
+
+def force_cube(level2_dir, resample='bilinear', resolution='20'):
+    """..."""
+
+    ## Get directory of datacube-definition.prj
+    prj_dir = get_datacubeprj_dir(level2_dir)
+
+    ## Get list of files to cube '*.tif'
+    file_paths = []
+
+    ## Execute FORCE command with Singularity container
+    for path in file_paths:
+        Client.execute(FORCE_PATH, ["force-cube", path, prj_dir, resample, resolution],
+                       options=["--cleanenv"])
