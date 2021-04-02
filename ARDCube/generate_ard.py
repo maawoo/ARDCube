@@ -39,6 +39,8 @@ def generate_ard(sensor, debug_force=False, mosaics=True):
 def process_sar(settings):
     """..."""
 
+    ## TODO: Implement SAR processing with pyroSAR container
+
     level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1')
     if not os.path.exists(level2_dir):
         os.makedirs(level2_dir)

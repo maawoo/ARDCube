@@ -17,7 +17,7 @@ def prepare_odc(sensor, overwrite=True):
     settings = get_settings()
 
     level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', sensor)
-    odc_product_path = os.path.join(ROOT_DIR, 'misc/odc', f"{sensor}.yaml")
+    odc_product_path = os.path.join(ROOT_DIR, 'settings/odc', f"{sensor}.yaml")
 
     ## Create product dictionary
     product_dict = read_product(product_path=odc_product_path)
@@ -306,6 +306,8 @@ def _get_metadata(file_dict_entry):
 
     :return: Dictionary with entries for each metadata field.
     """
+
+    ## TODO: Check what metadata FORCE writes into the GeoTIFFs!
 
     date = _format_date_string(_get_date_string(file_dict_entry[0]))
 

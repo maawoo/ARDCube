@@ -55,7 +55,7 @@ def get_dem_path(settings):
 
     ## Check if input exists
     if len(dem_input) == 0:
-        raise ValueError("Field 'DEM': Input missing! ")
+        raise RuntimeError("Field 'DEM': Input missing!")
 
     ## Check if 'srtm', a filename or a full path was chosen as input...
     if dem_input == 'srtm':
@@ -94,7 +94,7 @@ def create_dem(settings):
                            f"If not, the existing DEM will be used for processing! (y/n)")
 
             if answer in ['y', 'yes']:
-                Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{dem_path}"],
+                Client.execute(PYROSAR_PATH, ["python", dem_py_path, aoi_path, dem_path],
                                options=["--cleanenv"])
                 break
 
@@ -106,7 +106,7 @@ def create_dem(settings):
                 continue
 
     else:
-        Client.execute(PYROSAR_PATH, ["python", f"{dem_py_path}", f"{aoi_path}", f"{dem_path}"],
+        Client.execute(PYROSAR_PATH, ["python", dem_py_path, aoi_path, dem_path],
                        options=["--cleanenv"])
 
     return dem_path

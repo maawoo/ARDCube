@@ -16,8 +16,7 @@ def main():
                         debug_force=False)
     elif command in ['generate', 'process']:
         generate_ard(sensor=sensor,
-                     debug_force=False,
-                     mosaics=True)
+                     debug_force=False)
     elif command == 'prepare':
         prepare_odc(sensor=sensor,
                     overwrite=True)
