@@ -2,7 +2,6 @@ from ARDCube.config import ROOT_DIR, PYROSAR_PATH
 
 import configparser
 import os
-from spython.main import Client
 
 
 def get_settings():
@@ -76,6 +75,8 @@ def get_dem_path(settings):
 def create_dem(settings):
     """..."""
 
+    from spython.main import Client
+
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -109,3 +110,23 @@ def create_dem(settings):
                        options=["--cleanenv"])
 
     return dem_path
+
+
+def gpkg_to_geojson(gpkg_path):
+    """..."""
+
+    import fiona
+    from fiona.crs import from_epsg
+
+    out_file = os.path.join(os.path.dirname(gpkg_path),
+                            f"{os.path.splitext(os.path.basename(gpkg_path))[0]}.geojson")
+
+    if os.path.isfile(out_file):
+        pass
+    else:
+        with fiona.open(gpkg_path) as src:
+            with fiona.open(out_file, 'w', driver='GeoJSON', schema=src.schema, crs=from_epsg(4326)) as dst:
+                for rec in src:
+                    dst.write(rec)
+
+    return out_file
