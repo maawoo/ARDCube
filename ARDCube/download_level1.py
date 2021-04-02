@@ -1,5 +1,5 @@
 from ARDCube.config import FORCE_PATH, SAT_DICT
-from ARDCube.utils import get_settings, get_aoi_path
+from ARDCube.utils import get_settings, get_aoi_path, gpkg_to_geojson
 
 import sys
 import os
@@ -36,7 +36,6 @@ def download_sar(settings):
     """Download Sentinel-1 GRD data from Copernicus Open Access Hub based on parameters defined in 'settings.prm'.
     https://github.com/sentinelsat/sentinelsat
     """
-    ## TODO: Include SAROrbitDirection to query only ascending/descending scenes
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'sentinel1')
     if not os.path.exists(out_dir):
@@ -48,15 +47,31 @@ def download_sar(settings):
                             f"{datetime.now().strftime('%Y%m%dT%H%M%S__download_sentinel1')}.log")
     if not os.path.exists(os.path.dirname(log_file)):
         os.makedirs(os.path.dirname(log_file))
+
     logging.basicConfig(filename=log_file, filemode='w', format='%(message)s', level='INFO')
 
-    ## Get footprint from AOI
+    ## Get footprint from AOI. Convert to GeoJSON first if necessary.
     aoi_path = get_aoi_path(settings)
+    if aoi_path.endswith(".gpkg"):
+        aoi_path = gpkg_to_geojson(aoi_path)
+
     footprint = geojson_to_wkt(read_geojson(aoi_path))
 
     ## Get timespan
     timespan = (settings['DOWNLOAD']['TimespanMin'],
                 settings['DOWNLOAD']['TimespanMax'])
+
+    ## Get orbit direction(s) from settings.
+    orbitdirection = settings['DOWNLOAD']['SAROrbitDirection']
+
+    if orbitdirection == 'both':
+        direction = ['ASCENDING', 'DESCENDING']
+    elif orbitdirection in ['desc', 'descending']:
+        direction = 'DESCENDING'
+    elif orbitdirection in ['asc', 'ascending']:
+        direction = 'ASCENDING'
+    else:
+        raise ValueError(f"{orbitdirection} not recognized. Valid options are 'ascending', 'descending' or 'both'!")
 
     ## Connect to Copernicus Open Access Hub using provided credentials.
     ## The API defaults to https://scihub.copernicus.eu/apihub
@@ -67,14 +82,17 @@ def download_sar(settings):
     query = api.query(area=footprint,
                       date=timespan,
                       platformname='Sentinel-1',
-                      producttype='GRD')
+                      producttype='GRD',
+                      orbitdirection=direction)
 
     ## Before starting the download, print out query information and then ask for user confirmation.
     while True:
-        answer = input(f"\n{len(query)} Sentinel-1 GRD scenes were found between {timespan[0]} and {timespan[1]} \n"
-                       f"for the AOI defined by '{aoi_path}'. \n"
-                       f"\nThe total file size is {api.get_products_size(query)} GB \n"
-                       f"\nOutput directory: {out_dir} \n"
+        answer = input(f"\n{len(query)} Sentinel-1 GRD scenes were found using the following query parameters:"
+                       f"- Timespan: {timespan[0]} - {timespan[1]} \n"
+                       f"- Orbit direction(s): {direction} \n"
+                       f"- AOI file: {aoi_path} \n"
+                       f"\nTotal file size: {api.get_products_size(query)} GB \n"
+                       f"Output directory: {out_dir} \n"
                        f"Do you want to proceed with the download? (y/n)")
 
         if answer in ['y', 'yes']:
