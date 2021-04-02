@@ -120,9 +120,14 @@ def _mod_force_template_prm(settings, sensor):
     for p, v, i in zip(parameters, values, indexes):
         lines[i] = f"{p} = {v}\n"
 
-    ## Create copy of FORCE_params__template.prm with adjusted parameter fields and return its path
+    ## Define new output directory and create it if necessary
+    prm_dir_new = os.path.join(ROOT_DIR, 'settings/force/history')
+    if not os.path.exists(prm_dir_new):
+        os.makedirs(prm_dir_new)
+
+    ## Create copy of FORCE_params__template.prm with adjusted parameter fields and return full path
     now = datetime.now().strftime('%Y%m%dT%H%M%S')
-    prm_path_new = os.path.join(ROOT_DIR, 'settings/force', f"FORCE_params__{now}.prm")
+    prm_path_new = os.path.join(prm_dir_new, f"FORCE_params__{now}.prm")
     with open(prm_path_new, 'w') as file:
         file.writelines(lines)
 
@@ -160,7 +165,7 @@ def _check_force_file_queue(prm_path):
 
     ## Before starting the batch processing, ask for user confirmation. Return boolean depending on answer.
     while True:
-        answer = input(f"\nThe following queue file will be queried by FORCE: {queue_path}\n"
+        answer = input(f"\nThe following queue file will be queried by FORCE: \n{queue_path}\n"
                        f"{n_done} scenes are marked as 'DONE' \n{n_queued} scenes are marked as 'QUEUED'\n"
                        f"Do you want to proceed with the batch processing of all {n_queued} scenes marked as 'QUEUED'?"
                        f" (y/n)")
