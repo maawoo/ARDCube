@@ -6,19 +6,18 @@ import sys
 
 
 def main():
-    # Optional params?
-    # Print help when only 'help' is given as command?
+    ## TODO: Improve CLI functionality (e.g. optional parameters, help, ... ?)
 
     command = sys.argv[1]
-    sensor = sys.argv[2]
-    sensor = sensor.lower()  # Make lowercase
+    sensor = sys.argv[2].lower()
 
     if command == 'download':
         download_level1(sensor=sensor,
                         debug_force=False)
     elif command in ['generate', 'process']:
         generate_ard(sensor=sensor,
-                     debug_force=False)
+                     debug_force=False,
+                     mosaics=True)
     elif command == 'prepare':
         prepare_odc(sensor=sensor,
                     overwrite=True)
