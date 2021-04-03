@@ -11,57 +11,28 @@ from datetime import datetime
 import rasterio
 
 
-def prepare_odc(sensor, overwrite=True):
+def prepare_odc(sensor, overwrite=True, verify_checksum=False):
 
-    ## Get user defined settings
-    settings = get_settings()
-
-    level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', sensor)
-    odc_product_path = os.path.join(ROOT_DIR, 'settings/odc', f"{sensor}.yaml")
-
-    ## Create product dictionary
-    product_dict = read_product(product_path=odc_product_path)
+    ## TODO: Sentinel-1 ascending & descending products!
 
     ## Create file dictionary
     file_dict = create_file_dict(sensor=sensor,
-                                 level2_dir=level2_dir,
-                                 verify_checksum=False)
-
-    ## Check for existing YAML files and create new dict, if overwrite is set to 'False'
-    if overwrite is False:
-        file_dict = check_file_dict(level2_dir=level2_dir,
-                                    file_dict=file_dict)
+                                 overwrite=overwrite,
+                                 verify_checksum=verify_checksum)
 
     print(f"\n#### Creating EO3 YAML files for {len(file_dict)} {sensor} files.")
 
     ## Create metadata YAML files in EO3 format
     create_eo3_yaml(sensor=sensor,
-                    file_dict=file_dict,
-                    product_dict=product_dict)
-
-    return product_dict
+                    file_dict=file_dict)
 
 
-def read_product(product_path):
-    """Returns information from Product YAML as a dictionary."""
-
-    with open(product_path) as f:
-        yaml_dict = yaml.safe_load(f)
-
-    name = yaml_dict['name']
-    crs = yaml_dict['storage']['crs']
-    res = yaml_dict['storage']['resolution']['x']
-    band_names = [yaml_dict['measurements'][i]['name'] for i in range(len(yaml_dict['measurements']))]
-
-    return {'name': name, 'crs': crs, 'res': res, 'band_names': band_names}
-
-
-def create_file_dict(sensor, level2_dir, verify_checksum=False):
+def create_file_dict(sensor, overwrite, verify_checksum):
     """Recursively searches a given directory for matching GeoTIFF files. Files that return a checksum of 0 for all
     bands will not be included and their path will be stored in a logfile.
 
     :param sensor:
-    :param level2_dir: Path of the file directory. Subdirectories are also searched.
+    :param overwrite:
     :param verify_checksum:
 
     :return: Dictionary of the form
@@ -69,6 +40,10 @@ def create_file_dict(sensor, level2_dir, verify_checksum=False):
         or
         {'tileid__datestring': ['path/to/multiband.tif']}
     """
+
+    ## Get level-2 directory of sensor
+    settings = get_settings()
+    level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', sensor)
 
     if sensor == 'sentinel1':
         f_pattern = '**/*.tif'
@@ -92,47 +67,13 @@ def create_file_dict(sensor, level2_dir, verify_checksum=False):
         else:
             dict_out[identity].append(f)
 
-    return dict_out
-
-
-def check_file_dict(level2_dir, file_dict):
-    """Recursively searches for existing YAML files in the given directory. If YAML files are found, the input file
-    dictionary will be filtered for entries that don't have an associated YAML file already.
-
-    :param level2_dir: Path of the file directory. Subdirectories are also searched.
-    :param file_dict: Dictionary created by create_file_dict()
-
-    :return: Dictionary of the same form as the input dictionary (see create_file_dict() for examples).
-    """
-
-    ## Search for existing YAML-files in the file directory and use same identification as in create_file_dict()
-    yaml_dict = {}
-    for f in glob.iglob(os.path.join(level2_dir, '**/*.yaml'), recursive=True):
-
-        ## Create identity key for each file based on date string and tile ID
-        identity = _create_identity_string(f)
-
-        ## Fill dictionary
-        yaml_dict[identity] = f
-
-    ## Create new file dictionary if existing YAML files were found, else return initial file dictionary
-    if len(list(yaml_dict.keys())) != 0:
-
-        file_dict_new = {}
-        for key in list(file_dict.keys()):
-
-            if key in list(yaml_dict.keys()):
-                continue
-            else:
-                file_dict_new[key] = file_dict[key]
-
-        return file_dict_new
-
+    if overwrite:
+        return dict_out
     else:
-        return file_dict
+        return _update_file_dict(level2_dir=level2_dir, file_dict=dict_out)
 
 
-def create_eo3_yaml(sensor, file_dict, product_dict):
+def create_eo3_yaml(sensor, file_dict):
     """Creates a YAML file for each entry of the input file dictionary. The YAML files are stored in EO3 format so they
     can be index into an Open Data Cube instance. For more information see:
     https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html
@@ -144,27 +85,25 @@ def create_eo3_yaml(sensor, file_dict, product_dict):
     :return: YAML file
     """
 
-    product_name = product_dict['name']
-    crs = product_dict['crs']
-    band_names = product_dict['band_names']
+    product_dict = _read_product_yaml(sensor=sensor)
 
     for key in list(file_dict.keys()):
 
         shape, transform, crs_wkt = _get_grid_info(file_dict_entry=file_dict[key])
         measurements = _get_measurements(sensor=sensor,
                                          file_dict_entry=file_dict[key],
-                                         band_names=band_names)
+                                         band_names=product_dict['band_names'])
         meta = _get_metadata(sensor=sensor,
                              file_dict_entry=file_dict[key])
 
-        if crs != crs_wkt:
-            raise RuntimeError(f"The CRS specified in the product YAML {product_name} does not match the CRS of "
+        if product_dict['crs'] != crs_wkt:
+            raise RuntimeError(f"The CRS specified in the product YAML {product_dict['name']} does not match the CRS of "
                                f"{file_dict[key]}")
 
         yaml_content = {
             'id': str(uuid.uuid4()),
             '$schema': 'https://schemas.opendatacube.org/dataset',
-            'product': {'name': product_name},
+            'product': {'name': product_dict['name']},
             'crs': f"{crs_wkt}",
             'grids': {'default': {'shape': shape, 'transform': transform}
                       },
@@ -213,6 +152,43 @@ def _create_identity_string(file_path):
     return identity
 
 
+def _update_file_dict(level2_dir, file_dict):
+    """Recursively searches for existing YAML files in the given directory. If YAML files are found, the input file
+    dictionary will be filtered for entries that don't have an associated YAML file already.
+
+    :param level2_dir: Path of the file directory. Subdirectories are also searched.
+    :param file_dict: Dictionary created by create_file_dict()
+
+    :return: Dictionary of the same form as the input dictionary (see create_file_dict() for examples).
+    """
+
+    ## Search for existing YAML-files in the file directory and use same identification as in create_file_dict()
+    yaml_dict = {}
+    for f in glob.iglob(os.path.join(level2_dir, '**/*.yaml'), recursive=True):
+
+        ## Create identity key for each file based on date string and tile ID
+        identity = _create_identity_string(f)
+
+        ## Fill dictionary
+        yaml_dict[identity] = f
+
+    ## Create new file dictionary if existing YAML files were found, else return initial file dictionary
+    if len(list(yaml_dict.keys())) != 0:
+
+        file_dict_new = {}
+        for key in list(file_dict.keys()):
+
+            if key in list(yaml_dict.keys()):
+                continue
+            else:
+                file_dict_new[key] = file_dict[key]
+
+        return file_dict_new
+
+    else:
+        return file_dict
+
+
 def _get_date_string(file_path):
     """Extracts the date string from a file name."""
 
@@ -240,6 +216,22 @@ def _format_date_string(date):
                            'conventions.')
 
     return date
+
+
+def _read_product_yaml(sensor):
+    """Returns information from Product YAML as a dictionary."""
+
+    product_path = os.path.join(ROOT_DIR, 'settings/odc', f"{sensor}.yaml")
+
+    with open(product_path) as f:
+        yaml_dict = yaml.safe_load(f)
+
+    name = yaml_dict['name']
+    crs = yaml_dict['storage']['crs']
+    res = yaml_dict['storage']['resolution']['x']
+    band_names = [yaml_dict['measurements'][i]['name'] for i in range(len(yaml_dict['measurements']))]
+
+    return {'name': name, 'crs': crs, 'res': res, 'band_names': band_names}
 
 
 def _get_grid_info(file_dict_entry):
