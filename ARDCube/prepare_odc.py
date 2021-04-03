@@ -23,9 +23,9 @@ def prepare_odc(sensor, overwrite=True):
     product_dict = read_product(product_path=odc_product_path)
 
     ## Create file dictionary
-    file_dict = create_file_dict(settings=settings,
-                                 sensor=sensor,
-                                 level2_dir=level2_dir)
+    file_dict = create_file_dict(sensor=sensor,
+                                 level2_dir=level2_dir,
+                                 verify_checksum=False)
 
     ## Check for existing YAML files and create new dict, if overwrite is set to 'False'
     if overwrite is False:
@@ -54,13 +54,13 @@ def read_product(product_path):
     return {'name': name, 'crs': crs, 'res': res, 'band_names': band_names}
 
 
-def create_file_dict(settings, sensor, level2_dir):
+def create_file_dict(sensor, level2_dir, verify_checksum=False):
     """Recursively searches a given directory for matching GeoTIFF files. Files that return a checksum of 0 for all
     bands will not be included and their path will be stored in a logfile.
 
-    :param settings:
-    :param level2_dir: Path of the file directory. Subdirectories are also searched.
     :param sensor:
+    :param level2_dir: Path of the file directory. Subdirectories are also searched.
+    :param verify_checksum:
 
     :return: Dictionary of the form
         {'tileid__datestring': ['path/to/band_1.tif', 'path/to/band_2.tif', ...]}
@@ -77,23 +77,20 @@ def create_file_dict(settings, sensor, level2_dir):
 
     dict_out = {}
     for f in glob.iglob(os.path.join(level2_dir, f_pattern), recursive=True):
-        if sum(_get_checksums(f)) != 0:
 
-            ## Create identity key for each file based on date string and tile ID
-            identity = _create_identity_string(f)
+        if verify_checksum:
+            _valid_checksum(level2_dir, f)
 
-            ## Fill dictionary
-            ## Bands that are stored as separate files (e.g. Sentinel-1 VV & VH bands) have the same identity key
-            dict_keys = list(dict_out.keys())
-            if identity not in dict_keys:
-                dict_out[identity] = [f]
-            else:
-                dict_out[identity].append(f)
+        ## Create identity key for each file based on date string and tile ID
+        identity = _create_identity_string(f)
 
+        ## Fill dictionary
+        ## Bands that are stored as separate files (e.g. Sentinel-1 VV & VH bands) have the same identity key
+        dict_keys = list(dict_out.keys())
+        if identity not in dict_keys:
+            dict_out[identity] = [f]
         else:
-            ## Log file path if sum of checksums is 0, which means that something is likely wrong with that file
-            logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')
-            logging.info(f)
+            dict_out[identity].append(f)
 
     return dict_out
 
@@ -182,14 +179,22 @@ def create_eo3_yaml(file_dict, product_dict, sensor):
             yaml.safe_dump(yaml_content, stream, sort_keys=False)
 
 
-def _get_checksums(file_path):
+def _valid_checksum(level2_dir, file_path):
     """Returns the checksum for each band of a raster as a list."""
 
-    src = rasterio.open(file_path)
-    checksums = [src.checksum(i) for i in src.indexes]
-    src.close()
+    time = datetime.now().strftime("%Y%m%dT%H%M%S")
+    log_path = os.path.join(level2_dir, f'{time}__prepare_odc__failed_checksum.log')
 
-    return checksums
+    with rasterio.open(file_path) as src:
+        checksums = [src.checksum(i) for i in src.indexes]
+
+    if sum(checksums) != 0:
+        return True
+    else:
+        ## Log file path if sum of checksums is 0, which means that something is likely wrong with that file
+        logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')
+        logging.info(file_path)
+        return False
 
 
 def _create_identity_string(file_path):
