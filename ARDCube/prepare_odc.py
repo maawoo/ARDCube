@@ -54,10 +54,10 @@ def create_file_dict(sensor, overwrite, verify_checksum):
     for f in glob.iglob(os.path.join(level2_dir, f_pattern), recursive=True):
 
         if verify_checksum:
-            _valid_checksum(level2_dir, f)
+            _valid_checksum(level2_dir=level2_dir, file_path=f)
 
         ## Create identity key for each file based on date string and tile ID
-        identity = _create_identity_string(f)
+        identity = _create_identity_string(file_path=f)
 
         ## Fill dictionary
         ## Bands that are stored as separate files (e.g. Sentinel-1 VV & VH bands) have the same identity key
@@ -79,8 +79,7 @@ def create_eo3_yaml(sensor, file_dict):
     https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html
 
     :param sensor:
-    :param file_dict: Dictionary created by create_file_dict() or filtered by check_file_dict().
-    :param product_dict: Product dictionary created by read_product()
+    :param file_dict: Dictionary created by create_file_dict()
 
     :return: YAML file
     """
@@ -89,21 +88,30 @@ def create_eo3_yaml(sensor, file_dict):
 
     for key in list(file_dict.keys()):
 
-        shape, transform, crs_wkt = _get_grid_info(file_dict_entry=file_dict[key])
-        measurements = _get_measurements(sensor=sensor,
-                                         file_dict_entry=file_dict[key],
-                                         band_names=product_dict['band_names'])
-        meta = _get_metadata(sensor=sensor,
-                             file_dict_entry=file_dict[key])
+        file_dict_entry = file_dict[key]
+        file_path = file_dict[key][0]
 
-        if product_dict['crs'] != crs_wkt:
-            raise RuntimeError(f"The CRS specified in the product YAML {product_dict['name']} does not match the CRS of "
-                               f"{file_dict[key]}")
+        if sensor == 'sentinel1':
+            orbit = _s1_is_asc_or_desc(file_path=file_path)
+            prod_key = f"{sensor}_{orbit}.yaml"
+        else:
+            prod_key = f"{sensor}.yaml"
+
+        shape, transform, crs_wkt = _get_grid_info(file_path=file_path)
+        measurements = _get_measurements(sensor=sensor,
+                                         file_dict_entry=file_dict_entry,
+                                         band_names=product_dict[prod_key]['band_names'])
+        meta = _get_metadata(sensor=sensor,
+                             file_path=file_path)
+
+        if product_dict[prod_key]['crs'] != crs_wkt:
+            raise RuntimeError(f"The CRS specified in the product YAML {product_dict[prod_key]['name']} "
+                               f"does not match the CRS of {file_path}")
 
         yaml_content = {
             'id': str(uuid.uuid4()),
             '$schema': 'https://schemas.opendatacube.org/dataset',
-            'product': {'name': product_dict['name']},
+            'product': {'name': product_dict[prod_key]['name']},
             'crs': f"{crs_wkt}",
             'grids': {'default': {'shape': shape, 'transform': transform}
                       },
@@ -111,8 +119,8 @@ def create_eo3_yaml(sensor, file_dict):
             'properties': meta
         }
 
-        yaml_dir = os.path.dirname(file_dict[key][0])
-        yaml_name = _format_yaml_name(sensor=sensor, file_dict_entry=file_dict[key][0])
+        yaml_dir = os.path.dirname(file_path)
+        yaml_name = _format_yaml_name(sensor=sensor, file_path=file_path)
 
         with open(os.path.join(yaml_dir, yaml_name), 'w') as stream:
             yaml.safe_dump(yaml_content, stream, sort_keys=False)
@@ -140,7 +148,7 @@ def _create_identity_string(file_path):
     """Creates an identity string for a given file based on its tile ID and date string."""
 
     ## Get date string from filename
-    date = _get_date_string(file_path)
+    date = _get_date_string(file_path=file_path)
 
     ## Get tile ID from directory name (FORCE directory structure is assumed!)
     f_dir = os.path.dirname(file_path)
@@ -167,7 +175,7 @@ def _update_file_dict(level2_dir, file_dict):
     for f in glob.iglob(os.path.join(level2_dir, '**/*.yaml'), recursive=True):
 
         ## Create identity key for each file based on date string and tile ID
-        identity = _create_identity_string(f)
+        identity = _create_identity_string(file_path=f)
 
         ## Fill dictionary
         yaml_dict[identity] = f
@@ -189,7 +197,7 @@ def _update_file_dict(level2_dir, file_dict):
         return file_dict
 
 
-def _get_date_string(file_path):
+def _get_date_string(file_path, do_format=False):
     """Extracts the date string from a file name."""
 
     f_base = os.path.basename(file_path)
@@ -201,7 +209,10 @@ def _get_date_string(file_path):
     date = rs.group()
     date = date.replace("_", "")
 
-    return date
+    if do_format:
+        return _format_date_string(date=date)
+    else:
+        return date
 
 
 def _format_date_string(date):
@@ -221,23 +232,44 @@ def _format_date_string(date):
 def _read_product_yaml(sensor):
     """Returns information from Product YAML as a dictionary."""
 
-    product_path = os.path.join(ROOT_DIR, 'settings/odc', f"{sensor}.yaml")
+    if sensor == 'sentinel1':
+        product_path = [os.path.join(ROOT_DIR, 'settings/odc', f"{sensor}_asc.yaml"),
+                        os.path.join(ROOT_DIR, 'settings/odc', f"{sensor}_desc.yaml")]
+    else:
+        product_path = [os.path.join(ROOT_DIR, 'settings/odc', f"{sensor}.yaml")]
 
-    with open(product_path) as f:
-        yaml_dict = yaml.safe_load(f)
+    dict_out = {}
+    for path in product_path:
+        with open(path) as f:
+            yaml_dict = yaml.safe_load(f)
 
-    name = yaml_dict['name']
-    crs = yaml_dict['storage']['crs']
-    res = yaml_dict['storage']['resolution']['x']
-    band_names = [yaml_dict['measurements'][i]['name'] for i in range(len(yaml_dict['measurements']))]
+            name = yaml_dict['name']
+            crs = yaml_dict['storage']['crs']
+            res = yaml_dict['storage']['resolution']['x']
+            band_names = [yaml_dict['measurements'][i]['name'] for i in range(len(yaml_dict['measurements']))]
 
-    return {'name': name, 'crs': crs, 'res': res, 'band_names': band_names}
+        dict_out[os.path.basename(path)] = {'name': name, 'crs': crs, 'res': res, 'band_names': band_names}
+
+    return dict_out
 
 
-def _get_grid_info(file_dict_entry):
+def _s1_is_asc_or_desc(file_path):
+    """..."""
+
+    file = os.path.basename(file_path)
+
+    if file[10:11] == 'A':
+        return 'asc'
+    elif file[10:11] == 'D':
+        return 'desc'
+    else:
+        raise RuntimeError(f"Can't determine orbit direction of {file_path}")
+
+
+def _get_grid_info(file_path):
     """Get shape and transform information for a raster file."""
 
-    with rasterio.open(file_dict_entry[0]) as src:
+    with rasterio.open(file_path) as src:
         shape = list(src.shape)
         transform = list(src.transform)
         crs = src.crs.wkt
@@ -248,7 +280,6 @@ def _get_grid_info(file_dict_entry):
 def _get_measurements(sensor, file_dict_entry, band_names):
     """Creates a dictionary that can be used as direct input for the measurement section of an EO3 YAML file.
 
-    :param sensor:
     :param file_dict_entry: Either ['path/to/multiband.tif'] or ['path/to/band_1.tif', 'path/to/band_2.tif', ...]
     :param band_names: List of band names
 
@@ -270,12 +301,12 @@ def _get_measurements(sensor, file_dict_entry, band_names):
 
         for band in band_names:
             path = [path for path in file_dict_entry if band in path][0]
-            path = os.path.basename(path)
-            dict_out[band] = {'path': path}
+            path_rel = os.path.basename(path)
+            dict_out[band] = {'path': path_rel}
     else:
         for band, i in zip(band_names, range(len(band_names))):
-            path = os.path.basename(file_dict_entry[0])
-            dict_out[band] = {'path': path, 'band': i+1}  # +1 because range() starts at 0 not 1
+            path_rel = os.path.basename(file_dict_entry[0])
+            dict_out[band] = {'path': path_rel, 'band': i+1}  # +1 because range() starts at 0 not 1
 
         ## Replace entry for pixel_qa band
         dict_out['pixel_qa'] = {'path': os.path.basename(file_dict_entry[0]).replace('BOA', 'QAI')}
@@ -283,7 +314,7 @@ def _get_measurements(sensor, file_dict_entry, band_names):
     return dict_out
 
 
-def _get_metadata(sensor, file_dict_entry):
+def _get_metadata(sensor, file_path):
     """Creates a dictionary that can be used as direct input for the properties section of an EO3 YAML file.
 
     ODC currently uses the EO3 format for the YAML files, which is supposed to be an intermediate format before moving
@@ -296,34 +327,25 @@ def _get_metadata(sensor, file_dict_entry):
     Timestamp is the only compulsory field. Other useful metadata can/should be added later on.
 
     :param sensor:
-    :param file_dict_entry: Either ['path/to/multiband.tif'] or ['path/to/band_1.tif', 'path/to/band_2.tif', ...]
+    :param file_path:
 
     :return: Dictionary with entries for each metadata field.
     """
 
-    date = _format_date_string(_get_date_string(file_dict_entry[0]))
+    date = _get_date_string(file_path=file_path, do_format=True)
 
     if sensor == 'sentinel1':
-        file = os.path.basename(file_dict_entry[0])
-
-        if file[10:11] == 'A':
-            orbit = 'asc'
-        elif file[10:11] == 'D':
-            orbit = 'desc'
-        else:
-            raise RuntimeError(f"Cannot determine orbit direction of {file_dict_entry[0]}")
-
+        orbit = _s1_is_asc_or_desc(file_path=file_path)
         return {'datetime': date,
                 'sat:orbit_state': orbit}
-
     else:
         return {'datetime': date}
 
 
-def _format_yaml_name(sensor, file_dict_entry):
+def _format_yaml_name(sensor, file_path):
     """..."""
 
     if sensor == 'sentinel1':
-        return f"{os.path.splitext(os.path.basename(file_dict_entry))[0]}.yaml"
+        return f"{os.path.splitext(os.path.basename(file_path))[0]}.yaml"
     else:
-        return f"{os.path.basename(file_dict_entry).replace('_BOA.tif', '.yaml')}"
+        return f"{os.path.basename(file_path).replace('_BOA.tif', '.yaml')}"
