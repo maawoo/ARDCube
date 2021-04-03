@@ -37,41 +37,19 @@ def download_sar(settings):
     https://github.com/sentinelsat/sentinelsat
     """
 
+    ## Set logging
+    _sentinelsat_logging(settings)
+
+    ## Create directory if it doesn't exist yet
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'sentinel1')
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    ## Create logfile for sentinelsat output by default
-    ## https://sentinelsat.readthedocs.io/en/stable/api.html#logging
-    log_file = os.path.join(settings['GENERAL']['DataDirectory'], 'log',
-                            f"{datetime.now().strftime('%Y%m%dT%H%M%S__download_sentinel1')}.log")
-    if not os.path.exists(os.path.dirname(log_file)):
-        os.makedirs(os.path.dirname(log_file))
-
-    logging.basicConfig(filename=log_file, filemode='w', format='%(message)s', level='INFO')
-
-    ## Get footprint from AOI. Convert to GeoJSON first if necessary.
-    aoi_path = get_aoi_path(settings)
-    if aoi_path.endswith(".gpkg"):
-        aoi_path = gpkg_to_geojson(aoi_path)
-
-    footprint = geojson_to_wkt(read_geojson(aoi_path))
-
-    ## Get timespan
+    ## Get footprint/AOI path, timespan & orbit direction(s)
+    footprint, aoi_path = _sentinelsat_footprint(settings)
     timespan = (settings['DOWNLOAD']['TimespanMin'],
                 settings['DOWNLOAD']['TimespanMax'])
-
-    ## Get orbit direction(s) from settings.
-    orbitdirection = settings['DOWNLOAD']['SAROrbitDirection']
-
-    if orbitdirection == 'both':
-        direction = ['ASCENDING', 'DESCENDING']
-    elif orbitdirection in ['desc', 'descending']:
-        direction = 'DESCENDING'
-    elif orbitdirection in ['asc', 'ascending']:
-        direction = 'ASCENDING'
-    else:
-        raise ValueError(f"{orbitdirection} not recognized. Valid options are 'ascending', 'descending' or 'both'!")
+    direction = _sentinelsat_orbitdir(settings)
 
     ## Connect to Copernicus Open Access Hub using provided credentials.
     ## The API defaults to https://scihub.copernicus.eu/apihub
@@ -201,3 +179,43 @@ def _download_meta_catalogues(meta_dir):
         else:
             print(f"\n{answer} is not a valid answer!")
             continue
+
+
+def _sentinelsat_logging(settings):
+    """..."""
+
+    ## Create logfile for sentinelsat output by default
+    ## https://sentinelsat.readthedocs.io/en/stable/api.html#logging
+    log_file = os.path.join(settings['GENERAL']['DataDirectory'], 'log',
+                            f"{datetime.now().strftime('%Y%m%dT%H%M%S__download_sentinel1')}.log")
+
+    if not os.path.exists(os.path.dirname(log_file)):
+        os.makedirs(os.path.dirname(log_file))
+
+    logging.basicConfig(filename=log_file, filemode='w', format='%(message)s', level='INFO')
+
+
+def _sentinelsat_footprint(settings):
+    """..."""
+
+    aoi_path = get_aoi_path(settings)
+    if aoi_path.endswith(".gpkg"):
+        aoi_path = gpkg_to_geojson(aoi_path)
+
+    footprint = geojson_to_wkt(read_geojson(aoi_path))
+
+    return footprint, aoi_path
+
+
+def _sentinelsat_orbitdir(settings):
+    """..."""
+
+    field = settings['DOWNLOAD']['SAROrbitDirection']
+    if field == 'both':
+        return ['ASCENDING', 'DESCENDING']
+    elif field in ['desc', 'descending']:
+        return 'DESCENDING'
+    elif field in ['asc', 'ascending']:
+        return 'ASCENDING'
+    else:
+        raise ValueError(f"{field} not recognized. Valid options are 'ascending', 'descending' or 'both'!")
