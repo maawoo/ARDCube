@@ -32,10 +32,11 @@ def prepare_odc(sensor, overwrite=True):
         file_dict = check_file_dict(level2_dir=level2_dir,
                                     file_dict=file_dict)
 
+    print(f"\n#### Creating EO3 YAML files for {len(file_dict)} {sensor} files.")
+
     ## Create metadata YAML files in EO3 format
     create_eo3_yaml(file_dict=file_dict,
-                    product_dict=product_dict,
-                    sensor=sensor)
+                    product_dict=product_dict)
 
     return product_dict
 
@@ -67,8 +68,6 @@ def create_file_dict(sensor, level2_dir, verify_checksum=False):
         or
         {'tileid__datestring': ['path/to/multiband.tif']}
     """
-    time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_path = os.path.join(settings['GENERAL']['DataDirectory'], 'log', f'{time}__eo3_prepare_failed_checksum.log')
 
     if sensor == 'sentinel1':
         f_pattern = '**/*.tif'
@@ -132,14 +131,13 @@ def check_file_dict(level2_dir, file_dict):
         return file_dict
 
 
-def create_eo3_yaml(file_dict, product_dict, sensor):
+def create_eo3_yaml(file_dict, product_dict):
     """Creates a YAML file for each entry of the input file dictionary. The YAML files are stored in EO3 format so they
     can be index into an Open Data Cube instance. For more information see:
     https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html
 
     :param file_dict: Dictionary created by create_file_dict() or filtered by check_file_dict().
     :param product_dict: Product dictionary created by read_product()
-    :param sensor:
 
     :return: YAML file
     """
@@ -147,13 +145,6 @@ def create_eo3_yaml(file_dict, product_dict, sensor):
     product_name = product_dict['name']
     crs = product_dict['crs']
     band_names = product_dict['band_names']
-
-    ## The index 'ind_outname' is used in the for-loop to name the generated YAML-files based on the input files.
-    ## Both FORCE and pyroSAR use their own naming conventions, so file names should be consistent.
-    if sensor == 'sentinel1':
-        ind_outname = 27
-    else:
-        ind_outname = 25
 
     for key in list(file_dict.keys()):
 
@@ -173,7 +164,7 @@ def create_eo3_yaml(file_dict, product_dict, sensor):
         }
 
         yaml_dir = os.path.dirname(file_dict[key][0])
-        yaml_name = f'{os.path.basename(file_dict[key][0])[:ind_outname]}.yaml'
+        yaml_name = f'{os.path.splitext(os.path.basename(file_dict[key][0]))[0]}.yaml'
 
         with open(os.path.join(yaml_dir, yaml_name), 'w') as stream:
             yaml.safe_dump(yaml_content, stream, sort_keys=False)
@@ -236,8 +227,8 @@ def _format_date_string(date):
     elif len(date) == 15:
         date = datetime.strptime(date, '%Y%m%dT%H%M%S').strftime('%Y-%m-%dT%H:%M:%S.000Z')
     else:
-        raise IndexError('Length of date string is expected to be of length 8 or 15 based on existing file naming '
-                         'conventions.')
+        raise RuntimeError('Length of date string is expected to be of length 8 or 15 based on existing file naming '
+                           'conventions.')
 
     return date
 
@@ -245,12 +236,10 @@ def _format_date_string(date):
 def _get_grid_info(file_dict_entry):
     """Get shape and transform information for a raster file."""
 
-    src = rasterio.open(file_dict_entry[0])
-    shape = list(src.shape)
-    transform = list(src.transform)
-    crs = src.crs.wkt
-
-    src.close()
+    with rasterio.open(file_dict_entry[0]) as src:
+        shape = list(src.shape)
+        transform = list(src.transform)
+        crs = src.crs.wkt
 
     return shape, transform, crs
 
@@ -278,10 +267,8 @@ def _get_measurements(file_dict_entry, band_names):
             path = os.path.basename(file_dict_entry[0])
             dict_out[band] = {'path': path, 'band': i+1}  # +1 because range() starts at 0 not 1
 
-        ## Add QAI file
-        base_name = os.path.basename(file_dict_entry[0])
-        qai_band = base_name.replace('BOA', 'QAI')
-        dict_out['qai'] = {'path': qai_band, 'band': len(band_names)+1}
+        ## Replace entry for pixel_qa band
+        dict_out['pixel_qa'] = {'path': os.path.basename(file_dict_entry[0]).replace('BOA', 'QAI')}
 
     ## Sentinel 1
     else:
