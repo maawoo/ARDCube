@@ -35,7 +35,8 @@ def prepare_odc(sensor, overwrite=True):
     print(f"\n#### Creating EO3 YAML files for {len(file_dict)} {sensor} files.")
 
     ## Create metadata YAML files in EO3 format
-    create_eo3_yaml(file_dict=file_dict,
+    create_eo3_yaml(sensor=sensor,
+                    file_dict=file_dict,
                     product_dict=product_dict)
 
     return product_dict
@@ -131,11 +132,12 @@ def check_file_dict(level2_dir, file_dict):
         return file_dict
 
 
-def create_eo3_yaml(file_dict, product_dict):
+def create_eo3_yaml(sensor, file_dict, product_dict):
     """Creates a YAML file for each entry of the input file dictionary. The YAML files are stored in EO3 format so they
     can be index into an Open Data Cube instance. For more information see:
     https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html
 
+    :param sensor:
     :param file_dict: Dictionary created by create_file_dict() or filtered by check_file_dict().
     :param product_dict: Product dictionary created by read_product()
 
@@ -148,9 +150,16 @@ def create_eo3_yaml(file_dict, product_dict):
 
     for key in list(file_dict.keys()):
 
-        shape, transform, crs_wkt = _get_grid_info(file_dict[key])
-        measurements = _get_measurements(file_dict[key], band_names)
-        meta = _get_metadata(file_dict[key])
+        shape, transform, crs_wkt = _get_grid_info(file_dict_entry=file_dict[key])
+        measurements = _get_measurements(sensor=sensor,
+                                         file_dict_entry=file_dict[key],
+                                         band_names=band_names)
+        meta = _get_metadata(sensor=sensor,
+                             file_dict_entry=file_dict[key])
+
+        if crs != crs_wkt:
+            raise RuntimeError(f"The CRS specified in the product YAML {product_name} does not match the CRS of "
+                               f"{file_dict[key]}")
 
         yaml_content = {
             'id': str(uuid.uuid4()),
@@ -164,7 +173,7 @@ def create_eo3_yaml(file_dict, product_dict):
         }
 
         yaml_dir = os.path.dirname(file_dict[key][0])
-        yaml_name = f'{os.path.splitext(os.path.basename(file_dict[key][0]))[0]}.yaml'
+        yaml_name = _format_yaml_name(sensor=sensor, file_dict_entry=file_dict[key][0])
 
         with open(os.path.join(yaml_dir, yaml_name), 'w') as stream:
             yaml.safe_dump(yaml_content, stream, sort_keys=False)
@@ -244,9 +253,10 @@ def _get_grid_info(file_dict_entry):
     return shape, transform, crs
 
 
-def _get_measurements(file_dict_entry, band_names):
+def _get_measurements(sensor, file_dict_entry, band_names):
     """Creates a dictionary that can be used as direct input for the measurement section of an EO3 YAML file.
 
+    :param sensor:
     :param file_dict_entry: Either ['path/to/multiband.tif'] or ['path/to/band_1.tif', 'path/to/band_2.tif', ...]
     :param band_names: List of band names
 
@@ -260,9 +270,17 @@ def _get_measurements(file_dict_entry, band_names):
     """
 
     dict_out = {}
+    if sensor == 'sentinel1':
+        if len(file_dict_entry) != len(band_names):
+            raise RuntimeError(f"An equal number of files and band names is expected for sentinel1: \n"
+                               f"file_dict_entry: {file_dict_entry} \n"
+                               f"band_names: {band_names}")
 
-    ## Landsat 8 & Sentinel 2
-    if len(file_dict_entry) == 1:
+        for band in band_names:
+            path = [path for path in file_dict_entry if band in path][0]
+            path = os.path.basename(path)
+            dict_out[band] = {'path': path}
+    else:
         for band, i in zip(band_names, range(len(band_names))):
             path = os.path.basename(file_dict_entry[0])
             dict_out[band] = {'path': path, 'band': i+1}  # +1 because range() starts at 0 not 1
@@ -270,19 +288,10 @@ def _get_measurements(file_dict_entry, band_names):
         ## Replace entry for pixel_qa band
         dict_out['pixel_qa'] = {'path': os.path.basename(file_dict_entry[0]).replace('BOA', 'QAI')}
 
-    ## Sentinel 1
-    else:
-        assert len(file_dict_entry) == len(band_names), 'An equal number of file paths as band names is expected!'
-
-        for band in band_names:
-            path = [path for path in file_dict_entry if band in path][0]
-            path = os.path.basename(path)
-            dict_out[band] = {'path': path}
-
     return dict_out
 
 
-def _get_metadata(file_dict_entry):
+def _get_metadata(sensor, file_dict_entry):
     """Creates a dictionary that can be used as direct input for the properties section of an EO3 YAML file.
 
     ODC currently uses the EO3 format for the YAML files, which is supposed to be an intermediate format before moving
@@ -294,16 +303,15 @@ def _get_metadata(file_dict_entry):
 
     Timestamp is the only compulsory field. Other useful metadata can/should be added later on.
 
+    :param sensor:
     :param file_dict_entry: Either ['path/to/multiband.tif'] or ['path/to/band_1.tif', 'path/to/band_2.tif', ...]
 
     :return: Dictionary with entries for each metadata field.
     """
 
-    ## TODO: Check what metadata FORCE writes into the GeoTIFFs!
-
     date = _format_date_string(_get_date_string(file_dict_entry[0]))
 
-    if len(file_dict_entry) > 1:
+    if sensor == 'sentinel1':
         file = os.path.basename(file_dict_entry[0])
 
         if file[10:11] == 'A':
@@ -311,11 +319,19 @@ def _get_metadata(file_dict_entry):
         elif file[10:11] == 'D':
             orbit = 'desc'
         else:
-            orbit = None
-    else:
-        orbit = None
+            raise RuntimeError(f"Cannot determine orbit direction of {file_dict_entry[0]}")
 
-    dict_out = {'datetime': date,
+        return {'datetime': date,
                 'sat:orbit_state': orbit}
 
-    return dict_out
+    else:
+        return {'datetime': date}
+
+
+def _format_yaml_name(sensor, file_dict_entry):
+    """..."""
+
+    if sensor == 'sentinel1':
+        return f"{os.path.splitext(os.path.basename(file_dict_entry))[0]}.yaml"
+    else:
+        return f"{os.path.basename(file_dict_entry).replace('_BOA.tif', '.yaml')}"
