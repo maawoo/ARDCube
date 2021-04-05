@@ -142,7 +142,7 @@ def _mod_force_template_prm(settings, sensor):
 
     ## Create copy of FORCE_params__template.prm with adjusted parameter fields and return full path
     now = datetime.now().strftime('%Y%m%dT%H%M%S')
-    prm_path_new = os.path.join(prm_dir_new, f"FORCE_params__{now}.prm")
+    prm_path_new = os.path.join(prm_dir_new, f"FORCE_params__{sensor}_{now}.prm")
     with open(prm_path_new, 'w') as file:
         file.writelines(lines)
 

@@ -95,7 +95,7 @@ TIER = 1
 # ------------------------------------------------------------------------
 NPROC = FILL
 NTHREAD = FILL
-PARALLEL_READS = TRUE
+PARALLEL_READS = FALSE
 DELAY = 5
 TIMEOUT_ZIP = 30
 
