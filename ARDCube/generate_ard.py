@@ -75,11 +75,10 @@ def process_optical(settings, sensor, debug_force=False):
               "you cannot track the progress in here. However, you can regularly check the queue file mentioned \n"
               "above to see if the processing continues as expected.")
 
-        out = Client.execute(FORCE_PATH, ["force-level2", prm_file],
-                             options=["--cleanenv"], quiet=quiet, stream=True)
+        Client.execute(FORCE_PATH, ["force-level2", prm_file],
+                       options=["--cleanenv"], quiet=quiet, stream=False)
 
-        for line in out:
-            print(line, end='')
+        print("\n#### Finished processing! Creating additional outputs: VRT mosaics & KML-file of grid...")
 
         ## Create VRT mosaics and KML grid
         force_mosaic(level2_dir=out_dir)
@@ -234,7 +233,7 @@ def force_kml_grid(level2_dir, aoi_path=None):
         right = f.bounds[2] + 0.5
 
     ## Execute FORCE command with Singularity container
-    Client.execute(FORCE_PATH, ["force-tabulate-grid", prj_dir, bottom, top, left, right, "kml"],
+    Client.execute(FORCE_PATH, ["force-tabulate-grid", prj_dir, str(bottom), str(top), str(left), str(right), "kml"],
                    options=["--cleanenv"])
 
 
