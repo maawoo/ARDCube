@@ -56,6 +56,10 @@ def process_optical(settings, sensor, debug_force=False):
     """..."""
 
     Client.debug = debug_force
+    if debug_force:
+        quiet = False
+    else:
+        quiet = True
 
     ## A timestamped copy of FORCE_params__template.prm will be filled with all necessary information and
     ## used for processing.
@@ -72,7 +76,7 @@ def process_optical(settings, sensor, debug_force=False):
               "above to see if the processing continues as expected.")
 
         out = Client.execute(FORCE_PATH, ["force-level2", prm_file],
-                             options=["--cleanenv"], stream=True)
+                             options=["--cleanenv"], quiet=quiet, stream=True)
 
         for line in out:
             print(line, end='')

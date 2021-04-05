@@ -94,6 +94,10 @@ def download_optical(settings, sensor, debug_force=False):
     """
 
     Client.debug = debug_force
+    if debug_force:
+        quiet = False
+    else:
+        quiet = True
 
     ## Collect all information that will be used in the query
     force_abbr = SAT_DICT[sensor]
@@ -139,7 +143,7 @@ def download_optical(settings, sensor, debug_force=False):
 
             out = Client.execute(FORCE_PATH, ["force-level1-csd", "-s", force_abbr, "-d", daterange,
                                               "-c", cloudcover, meta_dir, out_dir, queue_file, aoi_path],
-                                 options=["--cleanenv"], stream=True)
+                                 options=["--cleanenv"], quiet=quiet, stream=True)
 
             for line in out:
                 print(line, end='')
