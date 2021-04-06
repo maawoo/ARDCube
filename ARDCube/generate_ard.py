@@ -1,7 +1,9 @@
 from ARDCube.config import ROOT_DIR, FORCE_PATH, PYROSAR_PATH, SAT_DICT
-from ARDCube.utils import get_settings, get_aoi_path, get_dem_path
+from ARDCube.utils import get_settings, get_aoi_path, get_dem_path, progress
 
 import os
+import glob
+import shutil
 from pathlib import Path
 from datetime import datetime
 from spython.main import Client
@@ -248,16 +250,32 @@ def force_mosaic(level2_dir):
                    options=["--cleanenv"])
 
 
-def force_cube(level2_dir, resample='bilinear', resolution='20'):
+def force_cube(in_dir, out_dir, prj_path=None, resample='bilinear', resolution='20'):
     """..."""
 
-    ## Get directory of datacube-definition.prj
-    prj_dir = get_datacubeprj_dir(level2_dir)
+    ## No path provided = A datacube-definition file is assumed to exist in the output directory (manually copied)
+    ## Full path provided = Existing datacube-definition file will be copied to output directory
+    if prj_path is None:
+        prj_file = os.path.join(out_dir, 'datacube-definition.prj')
+        if not os.path.isfile(prj_file):
+            raise FileNotFoundError(f"{prj_file} does not exist.")
+    else:
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        shutil.copy(prj_path, out_dir)
 
-    ## Get list of files to cube '*.tif'
+    ## Get list of all GeoTIFF files
     file_paths = []
+    for file in glob.iglob(os.path.join(in_dir, "**/*.tif"), recursive=True):
+        file_paths.append(file)
 
-    ## Execute FORCE command with Singularity container
-    for path in file_paths:
-        Client.execute(FORCE_PATH, ["force-cube", path, prj_dir, resample, resolution],
-                       options=["--cleanenv"])
+    ## Execute FORCE command sequentially for each file
+    ## Relevant: https://github.com/davidfrantz/force/issues/63
+    i = 0
+    total = len(file_paths)
+    for file in file_paths:
+        while i < total:
+            i += 1
+            progress(i, total, status=f"Running force-cube on {total} files")
+            Client.execute(FORCE_PATH, ["force-cube", file, out_dir, resample, resolution],
+                           options=["--cleanenv"])
