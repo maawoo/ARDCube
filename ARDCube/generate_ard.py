@@ -229,10 +229,10 @@ def force_kml_grid(level2_dir, aoi_path=None):
 
     ## Get AOI bounds and add a buffer of 0.5°
     with fiona.open(aoi_path) as f:
-        bottom = f.bounds[1] + 0.5
-        top = f.bounds[3] + 0.5
-        left = f.bounds[0] + 0.5
-        right = f.bounds[2] + 0.5
+        bottom = f.bounds[1] - 1
+        top = f.bounds[3] + 1
+        left = f.bounds[0] - 1
+        right = f.bounds[2] + 1
 
     ## Execute FORCE command with Singularity container
     Client.execute(FORCE_PATH, ["force-tabulate-grid", prj_dir, str(bottom), str(top), str(left), str(right), "kml"],
@@ -273,8 +273,8 @@ def force_cube(in_dir, out_dir, prj_path=None, resample='bilinear', resolution='
     ## Relevant: https://github.com/davidfrantz/force/issues/63
     i = 0
     total = len(file_paths)
-    for file in file_paths:
-        while i < total:
+    while i < total:
+        for file in file_paths:
             i += 1
             progress(i, total, status=f"Running force-cube on {total} files")
             Client.execute(FORCE_PATH, ["force-cube", file, out_dir, resample, resolution],
