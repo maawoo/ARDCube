@@ -15,10 +15,10 @@ storage:
 measurements:
     - name: 'VH'
       dtype: float32
-      nodata: 0
-      units: 'db - gamma0'
+      nodata: -99
+      units: 'dB (gamma0)'
 
     - name: 'VV'
       dtype: float32
-      nodata: 0
-      units: 'db - gamma0'
+      nodata: -99
+      units: 'dB (gamma0)'
