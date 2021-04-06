@@ -11,14 +11,13 @@ from datetime import datetime
 import rasterio
 
 
-def prepare_odc(sensor, overwrite=True, verify_checksum=False):
+def prepare_odc(sensor, overwrite=True):
 
     ## TODO: Sentinel-1 ascending & descending products!
 
     ## Create file dictionary
     file_dict = create_file_dict(sensor=sensor,
-                                 overwrite=overwrite,
-                                 verify_checksum=verify_checksum)
+                                 overwrite=overwrite)
 
     print(f"\n#### Creating EO3 YAML files for {len(file_dict)} {sensor} files.")
 
@@ -27,13 +26,12 @@ def prepare_odc(sensor, overwrite=True, verify_checksum=False):
                     file_dict=file_dict)
 
 
-def create_file_dict(sensor, overwrite, verify_checksum):
+def create_file_dict(sensor, overwrite):
     """Recursively searches a given directory for matching GeoTIFF files. Files that return a checksum of 0 for all
     bands will not be included and their path will be stored in a logfile.
 
     :param sensor:
     :param overwrite:
-    :param verify_checksum:
 
     :return: Dictionary of the form
         {'tileid__datestring': ['path/to/band_1.tif', 'path/to/band_2.tif', ...]}
@@ -50,22 +48,32 @@ def create_file_dict(sensor, overwrite, verify_checksum):
     else:
         f_pattern = '**/*BOA.tif'
 
+    timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+    log_path = os.path.join(level2_dir, f'{timestamp}__prepare_odc__skipped.log')
+    logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')
+
     dict_out = {}
-    for f in glob.iglob(os.path.join(level2_dir, f_pattern), recursive=True):
+    for file in glob.iglob(os.path.join(level2_dir, f_pattern), recursive=True):
 
-        if verify_checksum:
-            _valid_checksum(level2_dir=level2_dir, file_path=f)
-
-        ## Create identity key for each file based on date string and tile ID
-        identity = _create_identity_string(file_path=f)
-
-        ## Fill dictionary
-        ## Bands that are stored as separate files (e.g. Sentinel-1 VV & VH bands) have the same identity key
-        dict_keys = list(dict_out.keys())
-        if identity not in dict_keys:
-            dict_out[identity] = [f]
+        ## Skip files that are very small (< 0.5 MB) because some of these are probably not valid.
+        ## The log file can be used to check if valid files were skipped as well. If you want to include these, you can
+        ## adjust the threshold here and run prepare_odc with overwrite=False. This will create YAML files for any files
+        ## that were skipped previously.
+        size_mb = os.path.getsize(file) / 10e5
+        if size_mb < 0.5:
+            logging.info(f"{file} - {size_mb} MB")
+            continue
         else:
-            dict_out[identity].append(f)
+            ## Create identity key for each file based on date string and tile ID
+            identity = _create_identity_string(file_path=file)
+
+            ## Fill dictionary
+            ## Bands that are stored as separate files (e.g. Sentinel-1 VV & VH bands) have the same identity key
+            dict_keys = list(dict_out.keys())
+            if identity not in dict_keys:
+                dict_out[identity] = [file]
+            else:
+                dict_out[identity].append(file)
 
     if overwrite:
         return dict_out
@@ -124,24 +132,6 @@ def create_eo3_yaml(sensor, file_dict):
 
         with open(os.path.join(yaml_dir, yaml_name), 'w') as stream:
             yaml.safe_dump(yaml_content, stream, sort_keys=False)
-
-
-def _valid_checksum(level2_dir, file_path):
-    """Returns the checksum for each band of a raster as a list."""
-
-    time = datetime.now().strftime("%Y%m%dT%H%M%S")
-    log_path = os.path.join(level2_dir, f'{time}__prepare_odc__failed_checksum.log')
-
-    with rasterio.open(file_path) as src:
-        checksums = [src.checksum(i) for i in src.indexes]
-
-    if sum(checksums) != 0:
-        return True
-    else:
-        ## Log file path if sum of checksums is 0, which means that something is likely wrong with that file
-        logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')
-        logging.info(file_path)
-        return False
 
 
 def _create_identity_string(file_path):
