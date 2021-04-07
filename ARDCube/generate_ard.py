@@ -307,29 +307,34 @@ def _crop_by_aoi(settings, in_dir, out_dir):
     features = _get_aoi_features(aoi_path=aoi_path, crs=dst_crs)
 
     ## Crop each raster based on features
-    for file in list_files:
-        # print(file)
-        with rasterio.open(file) as src:
-            try:
-                out_image, out_transform = rasterio.mask.mask(src, features, crop=True, all_touched=True)
-                out_meta = src.meta.copy()
-                src_nodata = src.nodata
-            ## ValueError = Raster completely outside of vector
-            except ValueError:
-                # print(f"Skipped: {file}")
-                continue
+    i = 0
+    total = len(list_files)
+    while i < total:
+        for file in list_files:
+            i += 1
+            progress(i, total, status=f"Cropping {total} files to AOI")
+            # print(file)
+            with rasterio.open(file) as src:
+                try:
+                    out_image, out_transform = rasterio.mask.mask(src, features, crop=True, all_touched=True)
+                    out_meta = src.meta.copy()
+                    src_nodata = src.nodata
+                ## ValueError = Raster completely outside of vector
+                except ValueError:
+                    # print(f"Skipped: {file}")
+                    continue
 
-        ## It can happen that only a nodata part of a raster is inside the vector, which results in a raster without any
-        ## valid values. Using the mean seems to work pretty well and efficiently.
-        if not out_image.mean() == src_nodata:
-            out_meta.update({"driver": "GTiff",
-                             "height": out_image.shape[1],
-                             "width": out_image.shape[2],
-                             "transform": out_transform})
+            ## It can happen that only a nodata part of a raster is inside the vector, which results in a raster
+            ## without any valid values. Using the mean seems to work pretty well and efficiently.
+            if not out_image.mean() == src_nodata:
+                out_meta.update({"driver": "GTiff",
+                                 "height": out_image.shape[1],
+                                 "width": out_image.shape[2],
+                                 "transform": out_transform})
 
-            out_tif = os.path.join(out_dir, os.path.basename(file))
-            with rasterio.open(out_tif, "w", **out_meta) as dest:
-                dest.write(out_image)
+                out_tif = os.path.join(out_dir, os.path.basename(file))
+                with rasterio.open(out_tif, "w", **out_meta) as dest:
+                    dest.write(out_image)
 
 
 def _get_aoi_features(aoi_path, crs):
