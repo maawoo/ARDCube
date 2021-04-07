@@ -1,7 +1,7 @@
 from ARDCube.config import FORCE_PATH, SAT_DICT
-from ARDCube.utils import get_settings, get_aoi_path
+import ARDCube.utils as utils
+from ARDCube.utils_force import get_meta_catalogues
 
-import sys
 import os
 import logging
 from datetime import datetime
@@ -17,7 +17,7 @@ def download_level1(sensor, debug_force=False):
         raise ValueError(f"{sensor} is not supported!")
 
     ## Get user defined settings
-    settings = get_settings()
+    settings = utils.get_settings()
 
     ## Start download functions
     ## Both functions print query information first and then ask for confirmation to start the download.
@@ -108,14 +108,14 @@ def download_optical(settings, sensor, debug_force=False):
 
     meta_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'meta/catalogues')
     if not os.path.exists(meta_dir):
-        _download_meta_catalogues(meta_dir)
+        get_meta_catalogues(meta_dir)
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     queue_file = os.path.join(out_dir, 'queue.txt')
-    aoi_path = get_aoi_path(settings)
+    aoi_path = utils.get_aoi_path(settings)
 
     ## Send query to FORCE Singularity container as dry run first ("--no-act") and print output
     output = Client.execute(FORCE_PATH, ["force-level1-csd", "--no-act", "-s", force_abbr, "-d", daterange,
@@ -159,32 +159,6 @@ def download_optical(settings, sensor, debug_force=False):
             continue
 
 
-def _download_meta_catalogues(meta_dir):
-    """Download metadata catalogues necessary for downloading via FORCE if user confirms."""
-
-    while True:
-        answer = input(f"\n{meta_dir} does not exist. \nTo download datasets via FORCE, it is necessary to have "
-                       f"metadata catalogues stored in a local directory.\n "
-                       f"Do you want to download the latest catalogues into {meta_dir}? (y/n)")
-
-        if answer in ['y', 'yes']:
-            print("\n#### Starting download...")
-            os.makedirs(meta_dir)
-            out = Client.execute(FORCE_PATH, ["force-level1-csd", "-u", meta_dir],
-                                 options=["--cleanenv"], stream=True)
-
-            for line in out:
-                print(line, end='')
-
-        elif answer in ['n', 'no']:
-            print("\n#### Download cancelled...")
-            sys.exit()
-
-        else:
-            print(f"\n{answer} is not a valid answer!")
-            continue
-
-
 def _sentinelsat_logging(settings):
     """..."""
 
@@ -202,7 +176,7 @@ def _sentinelsat_logging(settings):
 def _sentinelsat_footprint(settings):
     """..."""
 
-    aoi_path = get_aoi_path(settings)
+    aoi_path = utils.get_aoi_path(settings)
     if aoi_path.endswith(".gpkg"):
         aoi_path = _gpkg_to_geojson(aoi_path)
 

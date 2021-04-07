@@ -1,10 +1,9 @@
 from ARDCube.config import ROOT_DIR, FORCE_PATH, PYROSAR_PATH, SAT_DICT
-from ARDCube.utils import get_settings, get_aoi_path, get_dem_path, progress
+import ARDCube.utils as utils
+import ARDCube.utils_force as force
 
 import os
 import glob
-import shutil
-from pathlib import Path
 from datetime import datetime
 from spython.main import Client
 import fiona
@@ -56,11 +55,10 @@ def process_sar(settings):
         os.mkdir(out_dir)
 
     # _crop_by_aoi(settings=settings, in_dir=in_dir, out_dir=out_dir)
-    # force_cube(level2_dir=out_dir)
+    # force.cube_dataset(level2_dir=out_dir)
+    # force.create_mosaics(level2_dir=out_dir)
+    # force.create_kml_grid(level2_dir=out_dir)
 
-    ## Create VRT mosaics and grid in KML format
-    # force_mosaic(level2_dir=out_dir)
-    # force_kml_grid(level2_dir=out_dir)
 
 
 def process_optical(settings, sensor, debug_force=False):
@@ -92,8 +90,8 @@ def process_optical(settings, sensor, debug_force=False):
         print("\n#### Finished processing! Creating additional outputs: VRT mosaics & KML-file of grid...")
 
         ## Create VRT mosaics and KML grid
-        force_mosaic(level2_dir=out_dir)
-        force_kml_grid(level2_dir=out_dir)
+        force.create_mosaics(level2_dir=out_dir)
+        force.create_kml_grid(level2_dir=out_dir)
 
     else:
         print("\n#### Processing cancelled...")
@@ -119,7 +117,7 @@ def _mod_force_template_prm(settings, sensor):
     dir_level2 = os.path.join(data_dir, f'level2/{sensor}')
     dir_log = os.path.join(data_dir, f'log/{sensor}')
     dir_tmp = os.path.join(data_dir, 'temp')
-    file_dem = get_dem_path(settings)
+    file_dem = utils.get_dem_path(settings)
     dem_nodata = settings['PROCESSING']['DEM_NoData']
     nproc = settings['PROCESSING']['NPROC']
     nthread = settings['PROCESSING']['NTHREAD']
@@ -210,86 +208,6 @@ def _check_force_file_queue(prm_path):
             continue
 
 
-def get_datacubeprj_dir(level2_dir):
-    """Recursively searches for 'datacube-definition.prj' in a level-2 directory and returns its parent directory."""
-
-    prj_path = []
-    for path in Path(level2_dir).rglob('datacube-definition.prj'):
-        prj_path.append(path)
-
-    if len(prj_path) < 1:
-        raise FileNotFoundError(f"'datacube-definition.prj' could not be found in any subdirectory of {level2_dir}")
-    elif len(prj_path) > 1:
-        raise RuntimeError(f"Multiple files called 'datacube-definition.prj' were found in subdirectories of "
-                           f"{level2_dir}. Only one file was expected.")
-    else:
-        return prj_path[0].parent
-
-
-def force_kml_grid(level2_dir, aoi_path=None):
-    """..."""
-
-    ## Use AOI defined in settings.prm if no other path is provided
-    if aoi_path is None:
-        aoi_path = get_aoi_path(get_settings())
-
-    ## Get directory of datacube-definition.prj
-    prj_dir = get_datacubeprj_dir(level2_dir)
-
-    ## Get AOI bounds and add a buffer of 0.5°
-    with fiona.open(aoi_path) as f:
-        bottom = f.bounds[1] - 1
-        top = f.bounds[3] + 1
-        left = f.bounds[0] - 1
-        right = f.bounds[2] + 1
-
-    ## Execute FORCE command with Singularity container
-    Client.execute(FORCE_PATH, ["force-tabulate-grid", prj_dir, str(bottom), str(top), str(left), str(right), "kml"],
-                   options=["--cleanenv"])
-
-
-def force_mosaic(level2_dir):
-    """..."""
-
-    ## Get directory of datacube-definition.prj
-    prj_dir = get_datacubeprj_dir(level2_dir)
-
-    ## Execute FORCE command with Singularity container
-    Client.execute(FORCE_PATH, ["force-mosaic", prj_dir],
-                   options=["--cleanenv"])
-
-
-def force_cube(in_dir, out_dir, prj_path=None, resample='bilinear', resolution='20'):
-    """..."""
-
-    ## No path provided = A datacube-definition file is assumed to exist in the output directory (manually copied)
-    ## Full path provided = Existing datacube-definition file will be copied to output directory
-    if prj_path is None:
-        prj_file = os.path.join(out_dir, 'datacube-definition.prj')
-        if not os.path.isfile(prj_file):
-            raise FileNotFoundError(f"{prj_file} does not exist.")
-    else:
-        if not os.path.exists(out_dir):
-            os.makedirs(out_dir)
-        shutil.copy(prj_path, out_dir)
-
-    ## Get list of all GeoTIFF files
-    file_paths = []
-    for file in glob.iglob(os.path.join(in_dir, "**/*.tif"), recursive=True):
-        file_paths.append(file)
-
-    ## Execute FORCE command sequentially for each file
-    ## Relevant: https://github.com/davidfrantz/force/issues/63
-    i = 0
-    total = len(file_paths)
-    while i < total:
-        for file in file_paths:
-            i += 1
-            progress(i, total, status=f"Running force-cube on {total} files")
-            Client.execute(FORCE_PATH, ["force-cube", file, out_dir, resample, resolution],
-                           options=["--cleanenv"])
-
-
 def _crop_by_aoi(settings, in_dir, out_dir):
     """..."""
 
@@ -303,7 +221,7 @@ def _crop_by_aoi(settings, in_dir, out_dir):
         dst_crs = raster.crs
 
     ## Get AOI path and get reprojected features
-    aoi_path = get_aoi_path(settings)
+    aoi_path = utils.get_aoi_path(settings)
     features = _get_aoi_features(aoi_path=aoi_path, crs=dst_crs)
 
     ## Crop each raster based on features
@@ -312,7 +230,7 @@ def _crop_by_aoi(settings, in_dir, out_dir):
     while i < total:
         for file in list_files:
             i += 1
-            progress(i, total, status=f"Cropping {total} files to AOI")
+            utils.progress(i, total, status=f"Cropping {total} files to AOI")
             # print(file)
             with rasterio.open(file) as src:
                 try:
