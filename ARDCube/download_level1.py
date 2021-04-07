@@ -1,5 +1,5 @@
 from ARDCube.config import FORCE_PATH, SAT_DICT
-from ARDCube.utils import get_settings, get_aoi_path, gpkg_to_geojson
+from ARDCube.utils import get_settings, get_aoi_path
 
 import sys
 import os
@@ -204,7 +204,7 @@ def _sentinelsat_footprint(settings):
 
     aoi_path = get_aoi_path(settings)
     if aoi_path.endswith(".gpkg"):
-        aoi_path = gpkg_to_geojson(aoi_path)
+        aoi_path = _gpkg_to_geojson(aoi_path)
 
     footprint = geojson_to_wkt(read_geojson(aoi_path))
 
@@ -223,3 +223,21 @@ def _sentinelsat_orbitdir(settings):
         return 'ASCENDING'
     else:
         raise ValueError(f"{field} not recognized. Valid options are 'ascending', 'descending' or 'both'!")
+
+
+def _gpkg_to_geojson(gpkg_path):
+    """..."""
+
+    import geopandas as gpd
+
+    out_name = os.path.join(os.path.dirname(gpkg_path),
+                            f"{os.path.splitext(os.path.basename(gpkg_path))[0]}_4326.geojson")
+
+    if os.path.isfile(out_name):
+        pass
+    else:
+        src = gpd.read_file(gpkg_path)
+        gpkg_4326 = src.to_crs(4326)
+        gpkg_4326.to_file(out_name, driver="GeoJSON")
+
+    return out_name

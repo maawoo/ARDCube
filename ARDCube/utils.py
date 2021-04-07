@@ -113,26 +113,6 @@ def create_dem(settings):
     return dem_path
 
 
-def gpkg_to_geojson(gpkg_path):
-    """..."""
-
-    import fiona
-    from fiona.crs import from_epsg
-
-    out_file = os.path.join(os.path.dirname(gpkg_path),
-                            f"{os.path.splitext(os.path.basename(gpkg_path))[0]}.geojson")
-
-    if os.path.isfile(out_file):
-        pass
-    else:
-        with fiona.open(gpkg_path) as src:
-            with fiona.open(out_file, 'w', driver='GeoJSON', schema=src.schema, crs=from_epsg(4326)) as dst:
-                for rec in src:
-                    dst.write(rec)
-
-    return out_file
-
-
 def progress(count, total, status=''):
     """
     Source: https://gist.github.com/vladignatyev/06860ec2040cb497f0f3
