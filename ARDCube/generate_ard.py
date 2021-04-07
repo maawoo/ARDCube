@@ -8,6 +8,9 @@ from pathlib import Path
 from datetime import datetime
 from spython.main import Client
 import fiona
+import geopandas as gpd
+import rasterio
+import rasterio.mask
 
 
 def generate_ard(sensor, debug_force=False):
@@ -47,6 +50,12 @@ def process_sar(settings):
     if not os.path.exists(level2_dir):
         os.makedirs(level2_dir)
 
+    in_dir = None
+    out_dir = None
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+
+    # _crop_by_aoi(settings=settings, in_dir=in_dir, out_dir=out_dir)
     # force_cube(level2_dir=out_dir)
 
     ## Create VRT mosaics and grid in KML format
@@ -279,3 +288,65 @@ def force_cube(in_dir, out_dir, prj_path=None, resample='bilinear', resolution='
             progress(i, total, status=f"Running force-cube on {total} files")
             Client.execute(FORCE_PATH, ["force-cube", file, out_dir, resample, resolution],
                            options=["--cleanenv"])
+
+
+def _crop_by_aoi(settings, in_dir, out_dir):
+    """..."""
+
+    ## Create file list
+    list_files = []
+    for file in glob.iglob(os.path.join(in_dir, '**/*.tif'), recursive=True):
+        list_files.append(file)
+
+    ## Get CRS from first file. All other files are assumed to be in the same CRS.
+    with rasterio.open(list_files[0]) as raster:
+        dst_crs = raster.crs
+
+    ## Get AOI path and get reprojected features
+    aoi_path = get_aoi_path(settings)
+    features = _get_aoi_features(aoi_path=aoi_path, crs=dst_crs)
+
+    ## Crop each raster based on features
+    for file in list_files:
+        # print(file)
+        with rasterio.open(file) as src:
+            try:
+                out_image, out_transform = rasterio.mask.mask(src, features, crop=True, all_touched=True)
+                out_meta = src.meta.copy()
+                src_nodata = src.nodata
+            ## ValueError = Raster completely outside of vector
+            except ValueError:
+                # print(f"Skipped: {file}")
+                continue
+
+        ## It can happen that only a nodata part of a raster is inside the vector, which results in a raster without any
+        ## valid values. Using the mean seems to work pretty well and efficiently.
+        if not out_image.mean() == src_nodata:
+            out_meta.update({"driver": "GTiff",
+                             "height": out_image.shape[1],
+                             "width": out_image.shape[2],
+                             "transform": out_transform})
+
+            out_tif = os.path.join(out_dir, os.path.basename(file))
+            with rasterio.open(out_tif, "w", **out_meta) as dest:
+                dest.write(out_image)
+
+
+def _get_aoi_features(aoi_path, crs):
+    """..."""
+
+    aoi_tmp = gpd.read_file(aoi_path)
+    aoi_tmp = aoi_tmp.to_crs({'init': crs})
+    aoi_tmp_path = os.path.join(os.path.dirname(aoi_path),
+                                f"{os.path.splitext(os.path.basename(aoi_path))[0]}_tmp.geojson")
+    aoi_tmp.to_file(aoi_tmp_path, driver="GeoJSON")
+
+    ## Open temporary AOI file with Fiona
+    with fiona.open(aoi_tmp_path) as shape:
+        features = [feature['geometry'] for feature in shape
+                    if feature['geometry']]
+
+    ## Remove temporary AOI file
+    os.remove(aoi_tmp_path)
+
+    return features
