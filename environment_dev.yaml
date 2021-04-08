@@ -24,6 +24,7 @@ dependencies:
   - freetype=2.10.4=h0708190_1
   - freexl=1.0.6=h7f98852_0
   - gdal=3.1.4=py37h56f316d_12
+  - geopandas=0.9.0=pyhd8ed1ab_0
   - geos=3.9.1=h9c3ff4c_2
   - geotiff=1.6.0=hcf90da6_5
   - gettext=0.19.8.1=h0b5b191_1005
@@ -58,6 +59,7 @@ dependencies:
   - libpng=1.6.37=h21135ba_2
   - libpq=13.1=hfd2b0eb_2
   - librttopo=1.1.0=h1185371_6
+  - libspatialindex=1.9.3=h9c3ff4c_3
   - libspatialite=5.0.1=h20cb978_4
   - libssh2=1.9.0=ha56f1ee_6
   - libstdcxx-ng=9.3.0=h6de172a_18
@@ -72,6 +74,7 @@ dependencies:
   - numpy=1.20.2=py37h038b26d_0
   - openjpeg=2.4.0=hf7af979_0
   - openssl=1.1.1k=h7f98852_0
+  - pandas=1.2.3=py37hdc94413_0
   - pcre=8.44=he1b5a44_0
   - pip=21.0.1=pyhd8ed1ab_0
   - pixman=0.40.0=h36c2ea0_0
@@ -81,11 +84,15 @@ dependencies:
   - proj=8.0.0=h277dcde_0
   - pthread-stubs=0.4=h36c2ea0_1001
   - pyparsing=2.4.7=pyh9f0ad1d_0
+  - pyproj=3.0.1=py37h2bb2a07_1
   - python=3.7.10=hffdb5ce_100_cpython
+  - python-dateutil=2.8.1=py_0
   - python_abi=3.7=1_cp37m
+  - pytz=2021.1=pyhd8ed1ab_0
   - pyyaml=5.4.1=py37h5e8e339_0
   - rasterio=1.2.1=py37ha549118_0
   - readline=8.0=he28a2e2_2
+  - rtree=0.9.7=py37h0b55af0_1
   - setuptools=49.6.0=py37h89c1867_3
   - shapely=1.7.1=py37hf7ed6d2_4
   - six=1.15.0=pyh9f0ad1d_0
