@@ -23,8 +23,7 @@ def get_settings():
     settings = configparser.ConfigParser(allow_no_value=True)
     settings.read(s_path)
 
-    # assert os.path.isdir(settings['GENERAL']['DataDirectory']), \
-    #     f"Field 'DataDirectory': {settings['GENERAL']['DataDirectory']} is not a valid path!"
+    isdir_mkdir(settings['GENERAL']['DataDirectory'])
 
     return settings
 
@@ -110,6 +109,19 @@ def create_dem(settings):
                        options=["--cleanenv"])
 
     return dem_path
+
+
+def isdir_mkdir(directory):
+    """..."""
+    if isinstance(directory, str):
+        if not os.path.isdir(directory):
+            os.mkdir(directory)
+    elif isinstance(directory, list):
+        for _dir in directory:
+            if not os.path.isdir(_dir):
+                os.mkdir(_dir)
+    else:
+        raise TypeError("Input must be a single PathLike[str] or a list thereof.")
 
 
 def progress(count, total, status=''):

@@ -4,6 +4,7 @@ import ARDCube.utils_force as force
 
 import os
 import glob
+import logging
 from datetime import datetime
 from spython.main import Client
 import fiona
@@ -114,9 +115,7 @@ def _mod_force_template_prm(settings, sensor):
 
     ## These paths might not exists at this point, so before running FORCE we should make sure they do!
     paths_to_check = [dir_level2, dir_log, dir_tmp]
-    for path in paths_to_check:
-        if not os.path.exists(path):
-            os.makedirs(path)
+    utils.isdir_mkdir(paths_to_check)
 
     ## Lists of parameter fields that need to be changed (parameters) and the content that will be used (values)
     ## The order of both lists need to be the same!!
@@ -139,8 +138,7 @@ def _mod_force_template_prm(settings, sensor):
 
     ## Define new output directory and create it if necessary
     prm_dir_new = os.path.join(ROOT_DIR, 'settings/force/history')
-    if not os.path.exists(prm_dir_new):
-        os.makedirs(prm_dir_new)
+    utils.isdir_mkdir(prm_dir_new)
 
     ## Create copy of FORCE_params__template.prm with adjusted parameter fields and return full path
     now = datetime.now().strftime('%Y%m%dT%H%M%S')
@@ -198,6 +196,13 @@ def _check_force_file_queue(prm_path):
 
 def _crop_by_aoi(settings, in_dir, out_dir):
     """..."""
+
+    ## Set logging
+    log_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'log')
+    utils.isdir_mkdir(log_dir)
+    log_file = os.path.join(log_dir,
+                            f"{datetime.now().strftime('%Y%m%dT%H%M%S__crop_by_aoi')}.log")
+    logging.basicConfig(filename=log_file, filemode='a', format='%(message)s', level='INFO')
 
     ## Create file list
     list_files = []

@@ -162,7 +162,7 @@ def _sentinelsat_logging(settings):
     ## Create logfile for sentinelsat output by default
     ## https://sentinelsat.readthedocs.io/en/stable/api.html#logging
     log_file = os.path.join(settings['GENERAL']['DataDirectory'], 'log',
-                            f"{datetime.now().strftime('%Y%m%dT%H%M%S__download_sentinel1')}.log")
+                            f"{datetime.now().strftime('%Y%m%dT%H%M%S__sentinel1__download_level1')}.log")
 
     if not os.path.exists(os.path.dirname(log_file)):
         os.makedirs(os.path.dirname(log_file))

@@ -46,8 +46,8 @@ def create_file_dict(sensor, overwrite):
         f_pattern = '**/*BOA.tif'
 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    log_path = os.path.join(level2_dir, f'{timestamp}__prepare_odc__skipped.log')
-    logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')
+    log_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'log')
+    log_path = os.path.join(log_dir, f'{timestamp}__{sensor}__prepare_odc.log')
 
     dict_out = {}
     for file in glob.iglob(os.path.join(level2_dir, f_pattern), recursive=True):
@@ -59,6 +59,7 @@ def create_file_dict(sensor, overwrite):
         ## TODO: Better to just check the grid & AOI. Also not here but already in generate_ard.py!
         size_mb = os.path.getsize(file) / 10e5
         if size_mb < 0.5:
+            logging.basicConfig(filename=log_path, filemode='a', format='%(message)s', level='INFO')
             logging.info(f"{file} - {size_mb} MB")
             continue
         else:

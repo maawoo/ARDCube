@@ -21,8 +21,9 @@ def download_catalogues(directory):
 
         if answer in ['y', 'yes']:
             print("\n#### Starting download...")
-            os.makedirs(meta_dir)
-            out = Client.execute(FORCE_PATH, ["force-level1-csd", "-u", meta_dir],
+            utils.isdir_mkdir(directory)
+
+            out = Client.execute(FORCE_PATH, ["force-level1-csd", "-u", directory],
                                  options=["--cleanenv"], stream=True)
             for line in out:
                 print(line, end='')
