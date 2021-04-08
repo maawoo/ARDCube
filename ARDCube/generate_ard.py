@@ -11,6 +11,7 @@ import fiona
 import geopandas as gpd
 import rasterio
 import rasterio.mask
+from rasterio.windows import get_data_window
 
 
 def generate_ard(sensor, debug_force=False):
@@ -194,7 +195,7 @@ def _check_force_file_queue(prm_path):
             continue
 
 
-def _crop_by_aoi(settings, in_dir, out_dir):
+def _crop_by_aoi(settings, directory_src, directory_dst):
     """..."""
 
     ## Set logging
@@ -206,7 +207,7 @@ def _crop_by_aoi(settings, in_dir, out_dir):
 
     ## Create file list
     list_files = []
-    for file in glob.iglob(os.path.join(in_dir, '**/*.tif'), recursive=True):
+    for file in glob.iglob(os.path.join(directory_src, '**/*.tif'), recursive=True):
         list_files.append(file)
 
     ## Get CRS from first file. All other files are assumed to be in the same CRS.
@@ -217,35 +218,60 @@ def _crop_by_aoi(settings, in_dir, out_dir):
     aoi_path = utils.get_aoi_path(settings)
     features = _get_aoi_features(aoi_path=aoi_path, crs=dst_crs)
 
-    ## Crop each raster based on features
     i = 0
     total = len(list_files)
     while i < total:
         for file in list_files:
             i += 1
             utils.progress(i, total, status=f"Cropping {total} files to AOI")
-            # print(file)
+
             with rasterio.open(file) as src:
                 try:
                     out_image, out_transform = rasterio.mask.mask(src, features, crop=True, all_touched=True)
                     out_meta = src.meta.copy()
                     src_nodata = src.nodata
-                ## ValueError = Raster completely outside of vector
+
+                    if not out_image.mean() == src_nodata:
+                        out_meta.update({"driver": "GTiff",
+                                         "height": out_image.shape[1],
+                                         "width": out_image.shape[2],
+                                         "transform": out_transform})
+
+                        tmp_tif = file.replace('.tif', '_tmp.tif')
+                        with rasterio.open(tmp_tif, "w", **out_meta) as dst:
+                            dst.write(out_image)
+
+                        ## TODO: Rewrite this mess without the temporary file.
+                        ## Getting the data window and cropping the output file works without writing to a
+                        ## temporary file first, but I had some problems with getting the transform right, so I'll
+                        ## just leave it like this for now.
+                        ## https://rasterio.readthedocs.io/en/latest/topics/windowed-rw.html?highlight=crop#data-windows
+
+                        with rasterio.open(tmp_tif) as src2:
+                            window = get_data_window(src2.read(1, masked=True))
+
+                            kwargs = src2.meta.copy()
+                            kwargs.update({
+                                'height': window.height,
+                                'width': window.width,
+                                'transform': rasterio.windows.transform(window, src2.transform)})
+
+                            out_name = os.path.basename(tmp_tif.replace('_tmp.tif', '.tif'))
+                            out_tif = os.path.join(directory_dst, out_name)
+                            with rasterio.open(out_tif, 'w', **kwargs) as dst:
+                                dst.write(src2.read(window=window))
+
+                        os.remove(tmp_tif)
+
+                    else:
+                        ## -> Only nodata part of raster was inside the vector if mean() == src_nodata.
+                        ## This results in an output raster with only no data values, which we don't want obviously.
+                        logging.info(f"{file} - Only nodata values inside AOI")
+
                 except ValueError:
-                    # print(f"Skipped: {file}")
+                    ## -> Raster is completely outside of vector
+                    logging.info(f"{file} - Raster completely outside AOI")
                     continue
-
-            ## It can happen that only a nodata part of a raster is inside the vector, which results in a raster
-            ## without any valid values. Using the mean seems to work pretty well and efficiently.
-            if not out_image.mean() == src_nodata:
-                out_meta.update({"driver": "GTiff",
-                                 "height": out_image.shape[1],
-                                 "width": out_image.shape[2],
-                                 "transform": out_transform})
-
-                out_tif = os.path.join(out_dir, os.path.basename(file))
-                with rasterio.open(out_tif, "w", **out_meta) as dest:
-                    dest.write(out_image)
 
 
 def _get_aoi_features(aoi_path, crs):
