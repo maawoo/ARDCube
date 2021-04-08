@@ -1,12 +1,13 @@
 from ARDCube.config import FORCE_PATH, SAT_DICT
 import ARDCube.utils as utils
-from ARDCube.utils_force import get_meta_catalogues
+from ARDCube.utils_force import download_catalogues
 
 import os
 import logging
 from datetime import datetime
 from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 from spython.main import Client
+import geopandas as gpd
 
 
 def download_level1(sensor, debug_force=False):
@@ -88,7 +89,7 @@ def download_sar(settings):
             continue
 
 
-def download_optical(settings, sensor, debug_force=False):
+def download_optical(settings, sensor, debug_force):
     """Download optical satellite data from Google Cloud Storage based on parameters defined in 'settings.prm'.
     https://force-eo.readthedocs.io/en/latest/howto/level1-csd.html#tut-l1csd
     """
@@ -107,8 +108,8 @@ def download_optical(settings, sensor, debug_force=False):
                  f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMax']}"
 
     meta_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'meta/catalogues')
-    if not os.path.exists(meta_dir):
-        get_meta_catalogues(meta_dir)
+    if not os.path.exists(meta_dir) or len(os.listdir(meta_dir)) == 0:
+        download_catalogues(meta_dir)
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
     if not os.path.exists(out_dir):
@@ -135,7 +136,6 @@ def download_optical(settings, sensor, debug_force=False):
                        f"Do you want to proceed with the download? (y/n)")
 
         if answer in ['y', 'yes']:
-
             print("\n#### Starting download... \n"
                   "If the download takes longer than you intended, you can just cancel the process \n"
                   "and start it again at a later time using the same settings. \n"
@@ -144,16 +144,13 @@ def download_optical(settings, sensor, debug_force=False):
             out = Client.execute(FORCE_PATH, ["force-level1-csd", "-s", force_abbr, "-d", daterange,
                                               "-c", cloudcover, meta_dir, out_dir, queue_file, aoi_path],
                                  options=["--cleanenv"], quiet=quiet, stream=True)
-
             for line in out:
                 print(line, end='')
-
             break
 
         elif answer in ['n', 'no']:
             print("\n#### Download cancelled...")
             break
-
         else:
             print(f"\n{answer} is not a valid answer!")
             continue
@@ -201,8 +198,6 @@ def _sentinelsat_orbitdir(settings):
 
 def _gpkg_to_geojson(gpkg_path):
     """..."""
-
-    import geopandas as gpd
 
     out_name = os.path.join(os.path.dirname(gpkg_path),
                             f"{os.path.splitext(os.path.basename(gpkg_path))[0]}_4326.geojson")

@@ -3,6 +3,7 @@ from ARDCube.config import ROOT_DIR, PYROSAR_PATH
 import configparser
 import os
 import sys
+from spython.main import Client
 
 
 def get_settings():
@@ -75,8 +76,6 @@ def get_dem_path(settings):
 
 def create_dem(settings):
     """..."""
-
-    from spython.main import Client
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
     if not os.path.exists(out_dir):

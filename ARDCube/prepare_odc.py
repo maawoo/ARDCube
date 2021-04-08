@@ -13,8 +13,6 @@ import rasterio
 
 def prepare_odc(sensor, overwrite=True):
 
-    ## TODO: Sentinel-1 ascending & descending products!
-
     ## Create file dictionary
     file_dict = create_file_dict(sensor=sensor,
                                  overwrite=overwrite)
@@ -39,7 +37,6 @@ def create_file_dict(sensor, overwrite):
         {'tileid__datestring': ['path/to/multiband.tif']}
     """
 
-    ## Get level-2 directory of sensor
     settings = get_settings()
     level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', sensor)
 
@@ -59,6 +56,7 @@ def create_file_dict(sensor, overwrite):
         ## The log file can be used to check if valid files were skipped as well. If you want to include these, you can
         ## adjust the threshold here and run prepare_odc with overwrite=False. This will create YAML files for any files
         ## that were skipped previously.
+        ## TODO: Better to just check the grid & AOI. Also not here but already in generate_ard.py!
         size_mb = os.path.getsize(file) / 10e5
         if size_mb < 0.5:
             logging.info(f"{file} - {size_mb} MB")
@@ -92,6 +90,7 @@ def create_eo3_yaml(sensor, file_dict):
     :return: YAML file
     """
 
+    ## Get information from product YAML(s)
     product_dict = _read_product_yaml(sensor=sensor)
 
     for key in list(file_dict.keys()):
@@ -120,7 +119,7 @@ def create_eo3_yaml(sensor, file_dict):
             'id': str(uuid.uuid4()),
             '$schema': 'https://schemas.opendatacube.org/dataset',
             'product': {'name': product_dict[prod_key]['name']},
-            'crs': f"{crs_wkt}",
+            'crs': crs_wkt,
             'grids': {'default': {'shape': shape, 'transform': transform}
                       },
             'measurements': measurements,

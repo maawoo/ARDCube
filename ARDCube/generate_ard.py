@@ -15,25 +15,21 @@ import rasterio.mask
 def generate_ard(sensor, debug_force=False):
     """..."""
 
-    ## Check if sensor is supported.
+    settings = utils.get_settings()
+
+    ## Check if sensor is supported and if level-1 directory exists
     if sensor not in list(SAT_DICT.keys()):
         raise ValueError(f"{sensor} is not supported!")
 
-    ## Get user defined settings
-    settings = get_settings()
-
-    ## Check if associated level-1 dataset exists in expected directory
     level1_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
     if not os.path.isdir(level1_dir):
         raise NotADirectoryError(f"{level1_dir} not found. \nDoes level-1 data for {sensor} exist?\n"
                                  f"If not, you can use 'download_level1()' to download some data first! :)")
 
-    ## Start processing functions
     print(f"#### Start processing of {sensor} dataset...")
 
     if sensor == 'sentinel1':
         process_sar(settings=settings)
-
     else:
         process_optical(settings=settings,
                         sensor=sensor,
@@ -45,23 +41,17 @@ def process_sar(settings):
 
     ## TODO: Implement SAR processing with pyroSAR container
 
+    pyro_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1_pyrosar')
     level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1')
-    if not os.path.exists(level2_dir):
-        os.makedirs(level2_dir)
+    utils.isdir_mkdir([pyro_dir, level2_dir])
 
-    in_dir = None
-    out_dir = None
-    if not os.path.isdir(out_dir):
-        os.mkdir(out_dir)
-
-    # _crop_by_aoi(settings=settings, in_dir=in_dir, out_dir=out_dir)
-    # force.cube_dataset(level2_dir=out_dir)
-    # force.create_mosaics(level2_dir=out_dir)
-    # force.create_kml_grid(level2_dir=out_dir)
+    # _crop_by_aoi(settings=settings, directory_src=pyro_dir, directory_dst=level2_dir)
+    # force.cube_dataset(directory=level2_dir)
+    # force.create_mosaics(directory=level2_dir)
+    # force.create_kml_grid(directory=level2_dir)
 
 
-
-def process_optical(settings, sensor, debug_force=False):
+def process_optical(settings, sensor, debug_force):
     """..."""
 
     Client.debug = debug_force
@@ -199,10 +189,8 @@ def _check_force_file_queue(prm_path):
 
         if answer in ['y', 'yes']:
             return True
-
         elif answer in ['n', 'no']:
             return False
-
         else:
             print(f"\n{answer} is not a valid answer!")
             continue
