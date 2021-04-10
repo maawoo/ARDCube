@@ -336,6 +336,6 @@ def _format_yaml_name(sensor, file_path):
     """..."""
 
     if sensor == 'sentinel1':
-        return f"{os.path.splitext(os.path.basename(file_path))[0]}.yaml"
+        return f"{os.path.splitext(os.path.basename(file_path))[0][:27]}.yaml"
     else:
         return f"{os.path.basename(file_path).replace('_BOA.tif', '.yaml')}"
