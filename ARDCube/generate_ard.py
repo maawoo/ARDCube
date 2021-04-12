@@ -4,7 +4,7 @@ import ARDCube.utils_force as force
 
 import os
 import glob
-import logging
+import multiprocessing as mp
 from datetime import datetime
 from spython.main import Client
 import fiona
@@ -198,80 +198,96 @@ def _check_force_file_queue(prm_path):
 def _crop_by_aoi(settings, directory_src, directory_dst):
     """..."""
 
-    ## Set logging
+    ## Define log-file
     log_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'log')
     utils.isdir_mkdir(log_dir)
     log_file = os.path.join(log_dir,
                             f"{datetime.now().strftime('%Y%m%dT%H%M%S__crop_by_aoi')}.log")
-    logging.basicConfig(filename=log_file, filemode='a', format='%(message)s', level='INFO')
 
     ## Create file list
-    list_files = []
+    file_list = []
     for file in glob.iglob(os.path.join(directory_src, '**/*.tif'), recursive=True):
-        list_files.append(file)
+        file_list.append(file)
 
-    ## Get CRS from first file. All other files are assumed to be in the same CRS.
-    with rasterio.open(list_files[0]) as raster:
+    ## Get CRS from first file. All other files are assumed to be in the same CRS!
+    with rasterio.open(file_list[0]) as raster:
         dst_crs = raster.crs
 
     ## Get AOI path and get reprojected features
     aoi_path = utils.get_aoi_path(settings)
     features = _get_aoi_features(aoi_path=aoi_path, crs=dst_crs)
 
-    i = 0
-    total = len(list_files)
-    while i < total:
-        for file in list_files:
-            i += 1
-            utils.progress(i, total, status=f"Cropping {total} files to AOI")
+    ## Set multiprocessing pool and print useful message
+    nproc = settings['PROCESSING']['NPROC']
+    pool = mp.Pool(nproc)
+    print(f"{len(file_list)}")
 
-            with rasterio.open(file) as src:
-                try:
-                    out_image, out_transform = rasterio.mask.mask(src, features, crop=True, all_touched=True)
-                    out_meta = src.meta.copy()
-                    src_nodata = src.nodata
+    ## TODO: Somehow implement progress bar or something else?
+    result_objects = [pool.apply_async(_do_crop, args=(file, features, directory_dst)) for file in file_list]
+    results = [f"{r.get()[0]} - {r.get()[1]}" for r in result_objects]
 
-                    if not out_image.mean() == src_nodata:
-                        out_meta.update({"driver": "GTiff",
-                                         "height": out_image.shape[1],
-                                         "width": out_image.shape[2],
-                                         "transform": out_transform})
+    pool.close()
+    pool.join()
 
-                        tmp_tif = file.replace('.tif', '_tmp.tif')
-                        with rasterio.open(tmp_tif, "w", **out_meta) as dst:
-                            dst.write(out_image)
+    ## TODO: Logging could be improved, but needs some careful work/testing because of parallelism
+    ## https://docs.python.org/3/library/multiprocessing.html#logging
+    with open(log_file, 'w') as f:
+        for item in results:
+            f.write("%s\n" % item)
 
-                        ## TODO: Rewrite this mess without the temporary file.
-                        ## Getting the data window and cropping the output file works without writing to a
-                        ## temporary file first, but I had some problems with getting the transform right, so I'll
-                        ## just leave it like this for now.
-                        ## https://rasterio.readthedocs.io/en/latest/topics/windowed-rw.html?highlight=crop#data-windows
 
-                        with rasterio.open(tmp_tif) as src2:
-                            window = get_data_window(src2.read(1, masked=True))
+def _do_crop(file, features, directory_dst):
 
-                            kwargs = src2.meta.copy()
-                            kwargs.update({
-                                'height': window.height,
-                                'width': window.width,
-                                'transform': rasterio.windows.transform(window, src2.transform)})
+    ## TODO: Rewrite this without the temporary file.
+    ## Getting the data window and cropping the output file works without writing to a
+    ## temporary file first, but I had some problems with getting the transform right.
+    ## It works pretty well as is (especially with multiprocessing), so I'll just leave it for now.
+    ## https://rasterio.readthedocs.io/en/latest/topics/windowed-rw.html?highlight=crop#data-windows
 
-                            out_name = os.path.basename(tmp_tif.replace('_tmp.tif', '.tif'))
-                            out_tif = os.path.join(directory_dst, out_name)
-                            with rasterio.open(out_tif, 'w', **kwargs) as dst:
-                                dst.write(src2.read(window=window))
+    with rasterio.open(file) as src:
+        try:
+            out_image, out_transform = rasterio.mask.mask(src, features, crop=True, all_touched=True)
+            out_meta = src.meta.copy()
+            src_nodata = src.nodata
 
-                        os.remove(tmp_tif)
+            if not out_image.mean() == src_nodata:
+                out_meta.update({"driver": "GTiff",
+                                 "height": out_image.shape[1],
+                                 "width": out_image.shape[2],
+                                 "transform": out_transform})
 
-                    else:
-                        ## -> Only nodata part of raster was inside the vector if mean() == src_nodata.
-                        ## This results in an output raster with only no data values, which we don't want obviously.
-                        logging.info(f"{file} - Only nodata values inside AOI")
+                tmp_tif = os.path.join(directory_dst, os.path.basename(file).replace('.tif', '_tmp.tif'))
+                with rasterio.open(tmp_tif, "w", **out_meta) as dst:
+                    dst.write(out_image)
 
-                except ValueError:
-                    ## -> Raster is completely outside of vector
-                    logging.info(f"{file} - Raster completely outside AOI")
-                    continue
+                with rasterio.open(tmp_tif) as src2:
+                    window = get_data_window(src2.read(1, masked=True))
+
+                    kwargs = src2.meta.copy()
+                    kwargs.update({
+                        'height': window.height,
+                        'width': window.width,
+                        'transform': rasterio.windows.transform(window, src2.transform)})
+
+                    out_name = os.path.basename(tmp_tif.replace('_tmp.tif', '.tif'))
+                    out_tif = os.path.join(directory_dst, out_name)
+
+                    try:
+                        with rasterio.open(out_tif, 'w', **kwargs) as dst:
+                            dst.write(src2.read(window=window))
+                        result = "success"
+                    except Exception as e:
+                        result = f"fail_3 - {e}"
+
+                os.remove(tmp_tif)
+
+            else:
+                result = "fail_2 - Only nodata of raster inside AOI"
+
+        except ValueError:
+            result = "fail_1 - Raster completely outside AOI"
+
+    return (file, result)
 
 
 def _get_aoi_features(aoi_path, crs):
