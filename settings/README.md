@@ -1,4 +1,4 @@
-**General notes**
+### General
 - You don't need to use any ' ' or " " for the parameters. 
   Using quotation marks could actually result in parameters not being understood by commands they're parsed to.
 - Download / Data availability
@@ -13,16 +13,11 @@
         - From Copernicus Open Access Hub (OAH) using sentinelsat (more information 
           [here](https://github.com/sentinelsat/sentinelsat))
         - OAH account credentials necessary!
-- Processing / FORCE parameters
-    - To better understand how level-2 ARD data is processed with FORCE, you should take a look into the
-      [documentation](https://force-eo.readthedocs.io/en/latest/howto/l2-ard.html#). 
-      You can see which parameters are chosen as default in the file `/force/FORCE_params__template.prm` and change them
-      if you want (see also notes inside the file!). Parameter descriptions are also provided in the file
-      `/force/FORCE_params__description.prm`. This file will not be queried for any processing and is really only there 
-      to provide additional parameter descriptions.   
-    
+- ...
 
 ---
+### `settings.prm`
+
 - **[GENERAL]**
     - **DataDirectory**  
        Example: `/path/to/your/data/directory`  
@@ -78,5 +73,20 @@
       Sensors: Optical and SAR  
       No data value of your DEM. This parameter will be ignored if `srtm` was chosen above.
     - **NPROC, NTHREAD:**  
-      Mandatory to read:
-      https://force-eo.readthedocs.io/en/latest/howto/l2-ard.html#parallel-processing
+      [Mandatory to read!](https://force-eo.readthedocs.io/en/latest/howto/l2-ard.html#parallel-processing)
+      
+---
+### `/force`
+
+To better understand how level-2 ARD data is processed with FORCE, you should take a look into the 
+[documentation](https://force-eo.readthedocs.io/en/latest/howto/l2-ard.html#). 
+You can see which parameters are chosen as default in the file `/force/FORCE_params__template.prm` and change them
+if you want (see also notes inside the file!). Parameter descriptions are also provided in the file
+`/force/FORCE_params__description.prm`. This file will not be queried for any processing and is really only there 
+to provide additional parameter descriptions.  
+
+---
+### `/odc`
+
+https://datacube-core.readthedocs.io/en/latest/ops/product.html
+
