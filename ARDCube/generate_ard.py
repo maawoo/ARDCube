@@ -82,8 +82,8 @@ def process_optical(settings, sensor, debug_force):
         print("\n#### Finished processing! Creating additional outputs: VRT mosaics & KML-file of grid...")
 
         ## Create VRT mosaics and KML grid
-        force.create_mosaics(level2_dir=out_dir)
-        force.create_kml_grid(level2_dir=out_dir)
+        force.create_mosaics(directory=out_dir)
+        force.create_kml_grid(directory=out_dir)
 
     else:
         print("\n#### Processing cancelled...")
@@ -277,15 +277,15 @@ def _do_crop(file, features, directory_dst):
                             dst.write(src2.read(window=window))
                         result = "success"
                     except Exception as e:
-                        result = f"fail_3 - {e}"
+                        result = f"fail 3: {e}"
 
                 os.remove(tmp_tif)
 
             else:
-                result = "fail_2 - Only nodata of raster inside AOI"
+                result = "fail 2: Only nodata of raster inside AOI"
 
         except ValueError:
-            result = "fail_1 - Raster completely outside AOI"
+            result = "fail 1: Raster completely outside AOI"
 
     return (file, result)
 

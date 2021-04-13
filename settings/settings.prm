@@ -6,22 +6,23 @@ AOI = thuringia.gpkg
 
 [DOWNLOAD]
 
-TimespanMin = 20170101
-TimespanMax = 20200101
+TimespanMin = 20170501
+TimespanMax = 20170901
+
+## Optical only
 OpticalCloudCoverRangeMin = 0
 OpticalCloudCoverRangeMax = 75
 
-SAROrbitDirection =
-CopernicusUser = 
-CopernicusPassword = 
+## SAR only
+SAROrbitDirection = both
+CopernicusUser =
+CopernicusPassword =
 
 
 [PROCESSING]
 
-DEM = srtm 
-DEM_NoData = -32768
-# LidarDEM_5m_uc_glance.tif
-# -9999
+DEM = LidarDEM_10m_uc_glance.tif 
+DEM_NoData = -9999
 
 NPROC = 1
-NTHREAD = 2
+NTHREAD = 4

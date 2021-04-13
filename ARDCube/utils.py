@@ -80,7 +80,7 @@ def create_dem(settings):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/pyroSAR/dem.py')
+    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/pyroSAR', 'dem.py')
     aoi_path = get_aoi_path(settings)
     aoi_name = os.path.splitext(os.path.basename(aoi_path))[0]
 
