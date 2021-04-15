@@ -1,10 +1,11 @@
-from ARDCube.config import POSTGRES_PATH
+from ARDCube.config import ROOT_DIR, POSTGRES_PATH
 
 import os
+import configparser
 from spython.main import Client
 
 
-def start_postgres(port=5433, debug=False):
+def start_postgres(debug=False):
 
     ## https://www.postgresql.org/docs/10/app-pg-ctl.html
     ## https://hub.docker.com/r/postgis/postgis
@@ -19,6 +20,9 @@ def start_postgres(port=5433, debug=False):
     pg_log = os.path.join(pg_dir, 'postgres_log')
     pg_data = os.path.join(pg_dir, 'postgres_data')
     pg_run = os.path.join(pg_dir, 'postgres_run')
+
+    ## Get port from datacube.conf
+    port = _get_port()
 
     output = Client.run(POSTGRES_PATH, ["pg_ctl", "start", f"--log={pg_log}", f"--options='-p {port}'", "--silent"],
                         bind=[f"{pg_data}:/var/lib/postgresql/data", f"{pg_run}:/var/run/postgresql"],
@@ -74,3 +78,15 @@ def odc_index_products():
 
 def odc_index_datasets():
     pass
+
+
+def _get_port():
+
+    datacube_conf_path = os.path.join(ROOT_DIR, 'settings/odc', 'datacube.conf')
+
+    datacube_conf = configparser.ConfigParser(allow_no_value=True)
+    datacube_conf.read(datacube_conf_path)
+
+    port = datacube_conf['default']['db_port']
+
+    return port
