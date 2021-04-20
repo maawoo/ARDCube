@@ -4,8 +4,9 @@ from ARDCube.utils_force import download_catalogues
 
 import os
 import logging
+import json
 from datetime import datetime
-from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
+from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt, SentinelAPIError
 from spython.main import Client
 import geopandas as gpd
 
@@ -42,7 +43,8 @@ def download_sar(settings):
     utils.isdir_mkdir(out_dir)
 
     ## Get footprint/AOI path, timespan & orbit direction(s)
-    footprint, aoi_path = _sentinelsat_footprint(settings)
+    aoi_path = utils.get_aoi_path(settings)
+    footprint = _sentinelsat_footprint(aoi_path)
     timespan = (settings['DOWNLOAD']['TimespanMin'],
                 settings['DOWNLOAD']['TimespanMax'])
     direction = _sentinelsat_orbitdir(settings)
@@ -53,11 +55,19 @@ def download_sar(settings):
                       api_url="https://scihub.copernicus.eu/apihub")
 
     ## Perform a query using provided parameters
-    query = api.query(area=footprint,
-                      date=timespan,
-                      platformname='Sentinel-1',
-                      producttype='GRD',
-                      orbitdirection=direction)
+    try:
+        query = api.query(area=footprint,
+                          date=timespan,
+                          platformname='Sentinel-1',
+                          producttype='GRD',
+                          orbitdirection=direction)
+    except SentinelAPIError:
+        footprint = _sentinelsat_footprint(aoi_path, simplify=True)
+        query = api.query(area=footprint,
+                          date=timespan,
+                          platformname='Sentinel-1',
+                          producttype='GRD',
+                          orbitdirection=direction)
 
     ## Before starting the download, print out query information and then ask for user confirmation.
     while True:
@@ -162,18 +172,6 @@ def _sentinelsat_logging(settings):
     logging.basicConfig(filename=log_file, filemode='w', format='%(message)s', level='INFO')
 
 
-def _sentinelsat_footprint(settings):
-    """..."""
-
-    aoi_path = utils.get_aoi_path(settings)
-    if aoi_path.endswith(".gpkg"):
-        aoi_path = _gpkg_to_geojson(aoi_path)
-
-    footprint = geojson_to_wkt(read_geojson(aoi_path))
-
-    return footprint, aoi_path
-
-
 def _sentinelsat_orbitdir(settings):
     """..."""
 
@@ -185,20 +183,21 @@ def _sentinelsat_orbitdir(settings):
     elif field in ['asc', 'ascending']:
         return 'ASCENDING'
     else:
-        raise ValueError(f"{field} not recognized. Valid options are 'ascending', 'descending' or 'both'!")
+        raise ValueError(f"{field} not recognized. Valid options are 'asc', 'desc' or 'both'!")
 
 
-def _gpkg_to_geojson(gpkg_path):
+def _sentinelsat_footprint(aoi_path, simplify=False):
     """..."""
 
-    out_name = os.path.join(os.path.dirname(gpkg_path),
-                            f"{os.path.splitext(os.path.basename(gpkg_path))[0]}_4326.geojson")
-
-    if os.path.isfile(out_name):
-        pass
+    ## Read AOI file, convert to WGS84 (required by sentinelsat) and convert to json string
+    ## Also simplify the polygon if option set to True
+    if simplify:
+        json_str = gpd.read_file(aoi_path).to_crs(4326).convex_hull.to_json()
     else:
-        src = gpd.read_file(gpkg_path)
-        gpkg_4326 = src.to_crs(4326)
-        gpkg_4326.to_file(out_name, driver="GeoJSON")
+        json_str = gpd.read_file(aoi_path).to_crs(4326).to_json()
 
-    return out_name
+    ## Convert json str to dict and then WKT... ¯\_(ツ)_/¯
+    json_obj = json.loads(json_str)
+    footprint = geojson_to_wkt(json_obj)
+
+    return footprint
