@@ -17,6 +17,7 @@ from rasterio.windows import get_data_window
 def generate_ard(sensor, debug_force=False):
     """..."""
 
+    ## Get settings from 'settings.prm'
     settings = utils.get_settings()
 
     ## Check if sensor is supported and if level-1 directory exists
@@ -28,8 +29,7 @@ def generate_ard(sensor, debug_force=False):
         raise NotADirectoryError(f"{level1_dir} not found. \nDoes level-1 data for {sensor} exist?\n"
                                  f"If not, you can use 'download_level1()' to download some data first! :)")
 
-    print(f"#### Start processing of {sensor} dataset...")
-
+    print(f"#### Start processing of {sensor} data...")
     if sensor == 'sentinel1':
         process_sar(settings=settings)
     else:
@@ -77,7 +77,7 @@ def process_optical(settings, sensor, debug_force):
               "above to see if the processing continues as expected.")
 
         Client.execute(FORCE_PATH, ["force-level2", prm_file],
-                       options=["--cleanenv"], quiet=quiet, stream=False)
+                       options=["--cleanenv"], quiet=quiet)
 
         print("\n#### Finished processing! Creating additional outputs: VRT mosaics & KML-file of grid...")
 

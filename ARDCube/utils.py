@@ -77,8 +77,7 @@ def create_dem(settings):
     """..."""
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+    isdir_mkdir(out_dir)
 
     dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/pyroSAR', 'dem.py')
     aoi_path = get_aoi_path(settings)
@@ -113,6 +112,7 @@ def create_dem(settings):
 
 def isdir_mkdir(directory):
     """..."""
+
     if isinstance(directory, str):
         if not os.path.isdir(directory):
             os.mkdir(directory)
