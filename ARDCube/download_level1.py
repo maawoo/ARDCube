@@ -6,36 +6,60 @@ import os
 import logging
 import json
 from datetime import datetime
-from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt, SentinelAPIError
+from sentinelsat import SentinelAPI, geojson_to_wkt, SentinelAPIError
 from spython.main import Client
 import geopandas as gpd
 
 
-def download_level1(sensor, debug_force=False):
-    """Main download script."""
+def download_level1(sensor, debug=False):
+    """Main function of this module. Will collect necessary query information from settings.prm and either run
+    download_sar() or download_optical(), depending on chosen sensor.
 
-    ## Get settings from 'settings.prm'
+    Parameters
+    ----------
+    sensor: string
+        Name of the sensor for which data should be downloaded for. Valid options are defined in SAT_DICT.keys().
+        Example: 'landsat8'
+    debug: boolean (optional)
+        Optional parameter to print Singularity debugging information.
+
+    Returns
+    -------
+    None
+    """
+
     settings = utils.get_settings()
 
-    ## Check if sensor is supported.
     if sensor not in list(SAT_DICT.keys()):
-        raise ValueError(f"{sensor} is not supported!")
+        raise ValueError(f"{sensor} is not supported!\n"
+                         f"Valid options are: {list(SAT_DICT.keys())}")
 
-    ## Collect query information
     query = _collect_query(settings=settings,
-                                sensor=sensor)
+                           sensor=sensor)
 
     print(f"#### Start download query for {sensor}...")
     if sensor == 'sentinel1':
         download_sar(query=query)
     else:
         download_optical(query=query,
-                         debug_force=debug_force)
+                         debug=debug)
 
 
 def download_sar(query):
-    """Download Sentinel-1 GRD data from Copernicus Open Access Hub based on parameters defined in 'settings.prm'.
-    https://github.com/sentinelsat/sentinelsat
+    """Download Sentinel-1 GRD data from Copernicus Open Access Hub based on provided query. Data is downloaded to the
+    subdirectory /level1/{sensor} of DataDirectory (as defined in settings.prm).
+    The package sentinelsat is used here. For any related issues check
+    the relevant documentation: https://sentinelsat.readthedocs.io/en/latest/api_overview.html
+    or the Github repo: https://github.com/sentinelsat/sentinelsat
+
+    Parameters
+    ----------
+    query: dictionary
+        Dictionary with query parameters created by helper function _collect_query().
+
+    Returns
+    -------
+    None
     """
 
     _sentinelsat_logging(query['log_dir'])
@@ -51,6 +75,7 @@ def download_sar(query):
                               producttype='GRD',
                               orbitdirection=query['direction'])
     except SentinelAPIError:
+        ## AOI is probably too complex. Try again with simplified version (convex hull).
         footprint = _sentinelsat_footprint(aoi_path=query['aoi_path'], simplify=True)
         api_query = api.query(area=footprint,
                               date=query['timespan'],
@@ -83,13 +108,27 @@ def download_sar(query):
             continue
 
 
-def download_optical(query, debug_force):
-    """Download optical satellite data from Google Cloud Storage based on parameters defined in 'settings.prm'.
-    https://force-eo.readthedocs.io/en/latest/howto/level1-csd.html#tut-l1csd
+def download_optical(query, debug):
+    """Download optical satellite data from Google Cloud Storage based on provided query. Data is downloaded to the
+    subdirectory /level1/{sensor} of DataDirectory (as defined in settings.prm).
+    The FORCE Singularity container is executed with the module 'force-level1-csd'. For any related issues check the
+    relevant documentation: https://force-eo.readthedocs.io/en/latest/howto/level1-csd.html#tut-l1csd
+    or the Github repo: https://github.com/davidfrantz/force
+
+    Parameters
+    ----------
+    query: dictionary
+        Dictionary with query parameters created by helper function _collect_query().
+    debug: boolean (optional)
+        Optional parameter to print Singularity debugging information.
+
+    Returns
+    -------
+    None
     """
 
-    Client.debug = debug_force
-    if debug_force:
+    Client.debug = debug
+    if debug:
         quiet = False
     else:
         quiet = True
@@ -139,6 +178,21 @@ def download_optical(query, debug_force):
 
 
 def _collect_query(settings, sensor):
+    """Helper function to collect information for download query.
+
+    Parameters
+    ----------
+    settings: ConfigParser object
+        A dictionary-like object created by ARDCube.utils.get_settings
+    sensor: string
+        Name of the sensor for which query information should be collected for.
+        Example: 'landsat8'
+
+    Returns
+    -------
+    query: dictionary
+        Dictionary with necessary query information. Information differs, depending on optical or SAR sensor.
+    """
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
     utils.isdir_mkdir(out_dir)
@@ -167,7 +221,7 @@ def _collect_query(settings, sensor):
 
 
 def _sentinelsat_logging(directory):
-    """https://sentinelsat.readthedocs.io/en/stable/api.html#logging"""
+    """Helper function to set sentinelsat logging. https://sentinelsat.readthedocs.io/en/stable/api.html#logging"""
 
     utils.isdir_mkdir(directory)
     log_file = os.path.join(directory, f"{datetime.now().strftime('%Y%m%dT%H%M%S__sentinel1__download_level1')}.log")
@@ -175,7 +229,7 @@ def _sentinelsat_logging(directory):
 
 
 def _sentinelsat_orbitdir(settings):
-    """..."""
+    """Helper function to get SAR orbit direction from settings.prm and format output accordingly."""
 
     field = settings['DOWNLOAD']['SAROrbitDirection']
     if field == 'both':
@@ -189,10 +243,10 @@ def _sentinelsat_orbitdir(settings):
 
 
 def _sentinelsat_footprint(aoi_path, simplify=False):
-    """..."""
+    """Helper function to create footprint from AOI file in WKT format and WGS84 projection."""
 
-    ## Read AOI file, convert to WGS84 (required by sentinelsat) and convert to json string
-    ## Also simplify the polygon if option set to True
+    ## Read AOI file, convert to WGS84 and convert to json string
+    ## Also simplify the polygon with convex_hull if option set to True
     if simplify:
         json_str = gpd.read_file(aoi_path).to_crs(4326).convex_hull.to_json()
     else:
