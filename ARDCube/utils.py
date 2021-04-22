@@ -73,13 +73,13 @@ def get_dem_path(settings):
     return dem_path
 
 
-def create_dem(settings):
-    """..."""
+def create_srtm(settings):
+    """Creates a 1Sec SRTM DEM for the AOI using the pyroSAR Singularity container."""
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
     isdir_mkdir(out_dir)
 
-    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube/pyroSAR', 'dem.py')
+    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube', 'pyroSAR', 'srtm.py')
     aoi_path = get_aoi_path(settings)
     aoi_name = os.path.splitext(os.path.basename(aoi_path))[0]
 
