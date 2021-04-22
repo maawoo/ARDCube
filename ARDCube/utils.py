@@ -9,19 +9,13 @@ from spython.main import Client
 def get_settings():
     """Gets the path of the settings file, reads it, checks it and returns it as a ConfigParser object."""
 
-    set_dir = os.path.join(ROOT_DIR, 'settings')
+    settings_file = os.path.join(ROOT_DIR, 'settings', 'settings.prm')
 
-    ## Get path of settings file. Ask for input, if not found in current work directory.
-    if 'settings.prm' not in os.listdir(set_dir):
-        s_path = input(f"'settings.prm' could not be found in {set_dir}.\n"
-                       f"Please provide the full path to your settings file "
-                       f"(e.g. '/path/to/settings.prm'): ")
-    else:
-        s_path = os.path.join(set_dir, 'settings.prm')
+    if not os.path.isfile(settings_file):
+        raise FileNotFoundError(f"{settings_file} does not exist.")
 
-    ## Read settings file
     settings = configparser.ConfigParser(allow_no_value=True)
-    settings.read(s_path)
+    settings.read(settings_file)
 
     isdir_mkdir(settings['GENERAL']['DataDirectory'])
 
@@ -29,44 +23,43 @@ def get_settings():
 
 
 def get_aoi_path(settings):
-    """Gets the full path to the AOI file based on settings."""
+    """Returns the full path of the AOI file based on what was provided in the 'AOI' field in settings.prm"""
 
-    if os.path.isfile(settings['GENERAL']['AOI']):
-        ## Full path provided and file exists! Whoop!
-        aoi_path = settings['GENERAL']['AOI']
+    aoi_field = settings['GENERAL']['AOI']
+
+    if len(aoi_field) == 0:
+        raise RuntimeError("Field 'AOI': Input missing!")
+
+    ## Field can be filename (assumed to be in the /misc/aoi subdirectory of DataDirectory) or full path
+    if not os.path.isfile(aoi_field):
+        aoi_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'aoi', aoi_field)
     else:
-        ## Filename provided only, which is assumed to be located in the subdirectory '/DataDirectory/misc/aoi'
-        ## as described in settings.prm!
-        aoi_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/aoi',
-                                settings['GENERAL']['AOI'])
+        aoi_path = aoi_field
 
-        ## Check if the file actually exists...
-        if not os.path.isfile(aoi_path):
-            raise FileNotFoundError(f"{aoi_path} does not exist! \n"
-                                    f"Please check your settings.prm for correct input of field 'AOI'!")
+    if not os.path.isfile(aoi_path):
+        raise FileNotFoundError(f"{aoi_path} does not exist! \n"
+                                f"Please check your settings.prm for correct input of field 'AOI'!")
 
     return aoi_path
 
 
 def get_dem_path(settings):
-    """..."""
+    """Returns the full path of the DEM file based on what was provided in the 'DEM' field in settings.prm"""
 
-    ## Get input from DEM field
-    dem_input = settings['PROCESSING']['DEM']
+    dem_field = settings['PROCESSING']['DEM']
 
-    ## Check if input exists
-    if len(dem_input) == 0:
+    if len(dem_field) == 0:
         raise RuntimeError("Field 'DEM': Input missing!")
 
-    ## Check if 'srtm', a filename or a full path was chosen as input...
-    if dem_input == 'srtm':
-        dem_path = create_dem(settings)
-    elif len(os.path.dirname(dem_input)) == 0:
-        dem_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem', dem_input)
+    ## Field can be filename (assumed to be in the /misc/dem subdirectory of DataDirectory), full path or 'srtm'
+    if not os.path.isfile(dem_field):
+        if dem_field == 'srtm':
+            dem_path = create_srtm(settings)
+        else:
+            dem_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'dem', dem_field)
     else:
-        dem_path = dem_input
+        dem_path = dem_field
 
-    ## Check if file exists
     if not os.path.isfile(dem_path):
         raise FileNotFoundError(f"{dem_path} does not exist!")
 
@@ -76,7 +69,7 @@ def get_dem_path(settings):
 def create_srtm(settings):
     """Creates a 1Sec SRTM DEM for the AOI using the pyroSAR Singularity container."""
 
-    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc/dem')
+    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'dem')
     isdir_mkdir(out_dir)
 
     dem_py_path = os.path.join(ROOT_DIR, 'ARDCube', 'pyroSAR', 'srtm.py')
@@ -89,20 +82,16 @@ def create_srtm(settings):
         while True:
             answer = input(f"{dem_path} already exist.\n"
                            f"Do you want to create a new SRTM 1Sec DEM for your AOI and overwrite the existing file? \n"
-                           f"If not, the existing DEM will be used for processing! (y/n)")
-
+                           f"If not, the existing DEM file will be used for processing! (y/n)")
             if answer in ['y', 'yes']:
                 Client.execute(PYROSAR_PATH, ["python", dem_py_path, aoi_path, dem_path],
                                options=["--cleanenv"])
                 break
-
             elif answer in ['n', 'no']:
                 break
-
             else:
                 print(f"{answer} is not a valid answer!")
                 continue
-
     else:
         Client.execute(PYROSAR_PATH, ["python", dem_py_path, aoi_path, dem_path],
                        options=["--cleanenv"])
@@ -111,15 +100,15 @@ def create_srtm(settings):
 
 
 def isdir_mkdir(directory):
-    """..."""
+    """Helper function to create a directory (or each directory in a list) if it doesn't exist already."""
 
     if isinstance(directory, str):
         if not os.path.isdir(directory):
             os.mkdir(directory)
     elif isinstance(directory, list):
-        for _dir in directory:
-            if not os.path.isdir(_dir):
-                os.mkdir(_dir)
+        for d in directory:
+            if not os.path.isdir(d):
+                os.mkdir(d)
     else:
         raise TypeError("Input must be a single PathLike[str] or a list thereof.")
 
