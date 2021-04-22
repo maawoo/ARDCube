@@ -1,6 +1,6 @@
 from ARDCube.config import FORCE_PATH, SAT_DICT
 import ARDCube.utils as utils
-from ARDCube.utils_force import download_catalogues
+import ARDCube.utils_force as force
 
 import os
 import logging
@@ -21,67 +21,59 @@ def download_level1(sensor, debug_force=False):
     if sensor not in list(SAT_DICT.keys()):
         raise ValueError(f"{sensor} is not supported!")
 
+    ## Collect query information
+    query = _collect_query(settings=settings,
+                                sensor=sensor)
+
     print(f"#### Start download query for {sensor}...")
     if sensor == 'sentinel1':
-        download_sar(settings=settings)
+        download_sar(query=query)
     else:
-        download_optical(settings=settings,
-                         sensor=sensor,
+        download_optical(query=query,
                          debug_force=debug_force)
 
 
-def download_sar(settings):
+def download_sar(query):
     """Download Sentinel-1 GRD data from Copernicus Open Access Hub based on parameters defined in 'settings.prm'.
     https://github.com/sentinelsat/sentinelsat
     """
 
-    ## Set logging
-    _sentinelsat_logging(settings)
+    _sentinelsat_logging(query['log_dir'])
 
-    ## Create directory if it doesn't exist yet
-    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'sentinel1')
-    utils.isdir_mkdir(out_dir)
-
-    ## Get footprint/AOI path, timespan & orbit direction(s)
-    aoi_path = utils.get_aoi_path(settings)
-    footprint = _sentinelsat_footprint(aoi_path)
-    timespan = (settings['DOWNLOAD']['TimespanMin'],
-                settings['DOWNLOAD']['TimespanMax'])
-    direction = _sentinelsat_orbitdir(settings)
-
-    ## Connect to Copernicus Open Access Hub using provided credentials.
-    api = SentinelAPI(user=settings['DOWNLOAD']['CopernicusUser'],
-                      password=settings['DOWNLOAD']['CopernicusPassword'],
+    api = SentinelAPI(user=query['username'],
+                      password=query['password'],
                       api_url="https://scihub.copernicus.eu/apihub")
 
-    ## Perform a query using provided parameters
     try:
-        query = api.query(area=footprint,
-                          date=timespan,
-                          platformname='Sentinel-1',
-                          producttype='GRD',
-                          orbitdirection=direction)
+        api_query = api.query(area=query['footprint'],
+                              date=query['timespan'],
+                              platformname='Sentinel-1',
+                              producttype='GRD',
+                              orbitdirection=query['direction'])
     except SentinelAPIError:
-        footprint = _sentinelsat_footprint(aoi_path, simplify=True)
-        query = api.query(area=footprint,
-                          date=timespan,
-                          platformname='Sentinel-1',
-                          producttype='GRD',
-                          orbitdirection=direction)
+        footprint = _sentinelsat_footprint(aoi_path=query['aoi_path'], simplify=True)
+        api_query = api.query(area=footprint,
+                              date=query['timespan'],
+                              platformname='Sentinel-1',
+                              producttype='GRD',
+                              orbitdirection=query['direction'])
 
-    ## Before starting the download, print out query information and then ask for user confirmation.
     while True:
         answer = input(f"\n{len(query)} Sentinel-1 GRD scenes were found using the following query parameters:\n"
-                       f"- Timespan: {timespan[0]} - {timespan[1]} \n"
-                       f"- Orbit direction(s): {direction} \n"
-                       f"- AOI file: {aoi_path} \n"
-                       f"\nTotal file size: {api.get_products_size(query)} GB \n"
-                       f"Output directory: {out_dir} \n"
+                       f"- Timespan: {query['timespan'][0]} - {query['timespan'][1]} \n"
+                       f"- Orbit direction(s): {query['direction']} \n"
+                       f"- AOI file: {query['aoi_path']} \n"
+                       f"\nTotal file size: {api.get_products_size(api_query)} GB \n"
+                       f"Output directory: {query['out_dir']} \n"
                        f"Do you want to proceed with the download? (y/n)")
         if answer in ['y', 'yes']:
             print("\n#### Starting download...")
-            api.download_all(query,
-                             directory_path=out_dir)
+            try:
+                api.download_all(api_query, directory_path=query['out_dir'])
+            except Exception as e:
+                print(f"Download was cancelled because of exception: {e}\n"
+                      f"Please check log file for more information!\n"
+                      f"Log file is located at: {query['log_dir']}")
             break
         elif answer in ['n', 'no']:
             print("\n#### Download cancelled...")
@@ -91,7 +83,7 @@ def download_sar(settings):
             continue
 
 
-def download_optical(settings, sensor, debug_force):
+def download_optical(query, debug_force):
     """Download optical satellite data from Google Cloud Storage based on parameters defined in 'settings.prm'.
     https://force-eo.readthedocs.io/en/latest/howto/level1-csd.html#tut-l1csd
     """
@@ -102,27 +94,16 @@ def download_optical(settings, sensor, debug_force):
     else:
         quiet = True
 
-    ## Collect all information that will be used in the query
-    force_abbr = SAT_DICT[sensor]
-    daterange = f"{settings['DOWNLOAD']['TimespanMin']}," \
-                f"{settings['DOWNLOAD']['TimespanMax']}"
-    cloudcover = f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMin']}," \
-                 f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMax']}"
-
-    meta_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'meta/catalogues')
+    meta_dir = query['meta_dir']
     if not os.path.exists(meta_dir) or len(os.listdir(meta_dir)) == 0:
-        download_catalogues(meta_dir)
+        force.download_catalogues(meta_dir)
 
-    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    queue_file = os.path.join(out_dir, 'queue.txt')
-    aoi_path = utils.get_aoi_path(settings)
+    timespan = f"{query['timespan'][0]},{query['timespan'][1]}"
 
     ## Send query to FORCE Singularity container as dry run first ("--no-act") and print output
-    output = Client.execute(FORCE_PATH, ["force-level1-csd", "--no-act", "-s", force_abbr, "-d", daterange,
-                                         "-c", cloudcover, meta_dir, out_dir, queue_file, aoi_path],
+    output = Client.execute(FORCE_PATH, ["force-level1-csd", "--no-act", "-s", query['force_abbr'], "-d", timespan,
+                                         "-c", query['cloudcover'], meta_dir, query['out_dir'],
+                                         query['queue_file'], query['aoi_path']],
                             options=["--cleanenv"])
 
     if isinstance(output, list):
@@ -132,9 +113,8 @@ def download_optical(settings, sensor, debug_force):
         print(output)
 
     ## Before starting the download, ask for user confirmation.
-    ## Same command as above will be send to container, but without the "--no-act" flag
     while True:
-        answer = input(f"Output directory: {out_dir} \n"
+        answer = input(f"Output directory: {query['out_dir']} \n"
                        f"Do you want to proceed with the download? (y/n)")
 
         if answer in ['y', 'yes']:
@@ -143,13 +123,13 @@ def download_optical(settings, sensor, debug_force):
                   "and start it again at a later time using the same settings. \n"
                   "Only incomplete and new scenes will be downloaded!\n")
 
-            out = Client.execute(FORCE_PATH, ["force-level1-csd", "-s", force_abbr, "-d", daterange,
-                                              "-c", cloudcover, meta_dir, out_dir, queue_file, aoi_path],
+            out = Client.execute(FORCE_PATH, ["force-level1-csd", "-s", query['force_abbr'], "-d", timespan,
+                                              "-c", query['cloudcover'], meta_dir, query['out_dir'],
+                                              query['queue_file'], query['aoi_path']],
                                  options=["--cleanenv"], quiet=quiet, stream=True)
             for line in out:
                 print(line, end='')
             break
-
         elif answer in ['n', 'no']:
             print("\n#### Download cancelled...")
             break
@@ -158,17 +138,39 @@ def download_optical(settings, sensor, debug_force):
             continue
 
 
-def _sentinelsat_logging(settings):
-    """..."""
+def _collect_query(settings, sensor):
 
-    ## Create logfile for sentinelsat output by default
-    ## https://sentinelsat.readthedocs.io/en/stable/api.html#logging
-    log_file = os.path.join(settings['GENERAL']['DataDirectory'], 'log',
-                            f"{datetime.now().strftime('%Y%m%dT%H%M%S__sentinel1__download_level1')}.log")
+    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
+    utils.isdir_mkdir(out_dir)
+    data_dir = settings['GENERAL']['DataDirectory']
+    aoi_path = utils.get_aoi_path(settings)
 
-    if not os.path.exists(os.path.dirname(log_file)):
-        os.makedirs(os.path.dirname(log_file))
+    query = {'out_dir': out_dir,
+             'aoi_path': aoi_path,
+             'timespan': (settings['DOWNLOAD']['TimespanMin'],
+                          settings['DOWNLOAD']['TimespanMax'])}
 
+    if sensor == 'sentinel1':
+        query['direction'] = _sentinelsat_orbitdir(settings)
+        query['footprint'] = _sentinelsat_footprint(aoi_path)
+        query['username'] = settings['DOWNLOAD']['CopernicusUser']
+        query['password'] = settings['DOWNLOAD']['CopernicusPassword']
+        query['log_dir'] = os.path.join(data_dir, 'log')
+    else:
+        query['force_abbr'] = SAT_DICT[sensor]
+        query['cloudcover'] = f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMin']}," \
+                              f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMax']}"
+        query['queue_file'] = os.path.join(out_dir, 'queue.txt')
+        query['meta_dir'] = os.path.join(data_dir, 'meta/catalogues')
+
+    return query
+
+
+def _sentinelsat_logging(directory):
+    """https://sentinelsat.readthedocs.io/en/stable/api.html#logging"""
+
+    utils.isdir_mkdir(directory)
+    log_file = os.path.join(directory, f"{datetime.now().strftime('%Y%m%dT%H%M%S__sentinel1__download_level1')}.log")
     logging.basicConfig(filename=log_file, filemode='w', format='%(message)s', level='INFO')
 
 
