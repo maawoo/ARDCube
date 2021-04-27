@@ -51,19 +51,23 @@ def get_dem_path(settings):
     if len(dem_field) == 0:
         raise RuntimeError("Field 'DEM': Input missing!")
 
-    ## Field can be filename (assumed to be in the /misc/dem subdirectory of DataDirectory), full path or 'srtm'
     if not os.path.isfile(dem_field):
         if dem_field == 'srtm':
             dem_path = create_srtm(settings)
+            dem_nodata = -32768
         else:
+            ## Input -> Filename (and the crystal ball says it's located in the /misc/dem subdirectory of DataDirectory)
             dem_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'dem', dem_field)
+            dem_nodata = settings['PROCESSING']['DEM_NoData']
     else:
+        ## Input -> Full path to an existing file
         dem_path = dem_field
+        dem_nodata = settings['PROCESSING']['DEM_NoData']
 
     if not os.path.isfile(dem_path):
         raise FileNotFoundError(f"{dem_path} does not exist!")
 
-    return dem_path
+    return dem_path, dem_nodata
 
 
 def create_srtm(settings):

@@ -109,8 +109,7 @@ def _mod_force_template_prm(settings, sensor):
     dir_level2 = os.path.join(data_dir, f'level2/{sensor}')
     dir_log = os.path.join(data_dir, f'log/{sensor}')
     dir_tmp = os.path.join(data_dir, 'temp')
-    file_dem = utils.get_dem_path(settings)
-    dem_nodata = settings['PROCESSING']['DEM_NoData']
+    file_dem, dem_nodata = utils.get_dem_path(settings)
     nproc = settings['PROCESSING']['NPROC']
     nthread = settings['PROCESSING']['NTHREAD']
 
