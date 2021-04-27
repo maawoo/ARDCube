@@ -6,8 +6,6 @@ from spatialist import Vector
 aoi_path = sys.argv[1]
 out_file = sys.argv[2]
 
-print(f"#### Creating SRTM 1Sec DEM for AOI: {aoi_path}")
-
 vrt = f"{os.path.splitext(out_file)[0]}.vrt"
 
 with Vector(aoi_path) as vec:

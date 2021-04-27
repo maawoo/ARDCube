@@ -13,10 +13,10 @@ def main():
 
     if command == 'download':
         download_level1(sensor=sensor,
-                        debug_force=False)
+                        debug=False)
     elif command in ['generate', 'process']:
         generate_ard(sensor=sensor,
-                     debug_force=False)
+                     debug=False)
     elif command == 'prepare':
         prepare_odc(sensor=sensor,
                     overwrite=True)

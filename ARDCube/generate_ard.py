@@ -14,7 +14,7 @@ import rasterio.mask
 from rasterio.windows import get_data_window
 
 
-def generate_ard(sensor, debug_force=False):
+def generate_ard(sensor, debug=False):
     """..."""
 
     ## Get settings from 'settings.prm'
@@ -35,7 +35,7 @@ def generate_ard(sensor, debug_force=False):
     else:
         process_optical(settings=settings,
                         sensor=sensor,
-                        debug_force=debug_force)
+                        debug=debug)
 
 
 def process_sar(settings):
@@ -56,8 +56,8 @@ def process_sar(settings):
 def process_optical(settings, sensor, debug_force):
     """..."""
 
-    Client.debug = debug_force
-    if debug_force:
+    Client.debug = debug
+    if debug:
         quiet = False
     else:
         quiet = True
@@ -79,11 +79,10 @@ def process_optical(settings, sensor, debug_force):
         Client.execute(FORCE_PATH, ["force-level2", prm_file],
                        options=["--cleanenv"], quiet=quiet)
 
-        print("\n#### Finished processing! Creating additional outputs: VRT mosaics & KML-file of grid...")
-
-        ## Create VRT mosaics and KML grid
+        print("\n#### Finished processing! Creating additional outputs...\n")
         force.create_mosaics(directory=out_dir)
         force.create_kml_grid(directory=out_dir)
+        print("Done!")
 
     else:
         print("\n#### Processing cancelled...")
