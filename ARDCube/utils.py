@@ -4,6 +4,7 @@ import configparser
 import os
 import sys
 from spython.main import Client
+import geopandas as gpd
 
 
 def get_settings():
@@ -77,7 +78,7 @@ def create_srtm(settings):
     isdir_mkdir(out_dir)
 
     dem_py_path = os.path.join(ROOT_DIR, 'ARDCube', 'pyroSAR', 'srtm.py')
-    aoi_path = get_aoi_path(settings)
+    aoi_path = _aoi_wgs84(aoi_path=get_aoi_path(settings))
     aoi_name = os.path.splitext(os.path.basename(aoi_path))[0]
 
     dem_path = os.path.join(out_dir, f"SRTM_1Sec_DEM__{aoi_name}.tif")
@@ -101,6 +102,39 @@ def create_srtm(settings):
                        options=["--cleanenv"])
 
     return dem_path
+
+
+def _aoi_wgs84(aoi_path):
+    """Convert AOI to WGS84 if necessary. Otherwise create_dem fails. """
+
+    aoi = gpd.read_file(aoi_path)
+
+    if not aoi.crs.to_epsg() is 4326:
+        base = os.path.splitext(aoi_path)[0]
+        suffix = os.path.splitext(aoi_path)[1]
+        out_path = f"{base}_4326{suffix}"
+
+        if not os.path.isfile(out_path):
+            aoi.to_crs(4326).to_file(filename=out_path, driver=_get_driver(suffix))
+        else:
+            pass
+
+        return out_path
+    else:
+        return aoi_path
+
+
+def _get_driver(suffix):
+    """Return OGR format driver based on file suffix."""
+
+    if suffix == ".shp":
+        return "ESRI Shapefile"
+    elif suffix == ".gpkg":
+        return "GPKG"
+    elif suffix == ".geojson":
+        return "GeoJSON"
+    else:
+        raise RuntimeError(f"{suffix} is not a supported format for the AOI file.")
 
 
 def isdir_mkdir(directory):
