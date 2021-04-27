@@ -1,26 +1,34 @@
+import sys
 import os
+import glob
 from pyroSAR import snap
-from spatialist.ancillary import finder
 
-maindir = '/home/marco/pypypy/00_data/pyro_test'
-outdir = os.path.join(maindir, 'out_2')
+in_dir = sys.argv[1]
+out_dir = sys.argv[2]
+aoi_path = sys.argv[3]
+dem_path = sys.argv[4]
+
 snap_gpt = '/opt/snap/bin/gpt'
-shape = os.path.join(maindir, 'misc', 'th_stripe.geojson')  # TH_shape_25832.gpkg
-dem_lidar = os.path.join(maindir, 'dem', 'TH_LidarDEM_10m.tif')  # 10m
-dem_srtm = os.path.join(maindir, 'dem', 'TH_SRTM_30m.tif')  # 30m
-epsg = 25832
 
-scenes = finder(os.path.join(maindir, 'S1'), ['S1*zip'])
-print(f"Number of scenes found: {len(scenes)} ")
+list_scenes = []
+for file in glob.iglob(os.path.join(in_dir, 'S1*zip'), recursive=True):
+    list_scenes.append(file)
 
-for scene in scenes:
+print(f"Number of scenes found: {len(list_scenes)}")
+
+for scene in list_scenes:
     print(os.path.basename(scene))
 
-    snap.geocode(infile=scene, outdir=outdir, t_srs=epsg, tr=20,
-                 shapefile=None, scaling='db', allow_RES_OSV=True,
-                 externalDEMFile=dem_srtm, externalDEMApplyEGM=False, groupsize=1,
-                 export_extra=None, test=False
-                 )
+    ## All parameters (except the ones that are filled by variables obviously) are left as default based on the
+    ## pyroSAR v0.12 docs: https://pyrosar.readthedocs.io/en/v0.12/pyroSAR.html#module-pyroSAR.snap.util
+    snap.geocode(infile=scene, outdir=out_dir, t_srs=4326, tr=20, polarizations='all', shapefile=aoi_path,
+                 scaling='dB', geocoding_type='Range-Doppler', removeS1BorderNoise=True,
+                 removeS1BorderNoiseMethod='pyroSAR', removeS1ThermalNoise=True, offset=None, allow_RES_OSV=False,
+                 externalDEMFile=dem_path, externalDEMNoDataValue=None, externalDEMApplyEGM=True,
+                 terrainFlattening=True, basename_extensions=None, test=False, export_extra=None, groupsize=1,
+                 cleanup=True, tmpdir=None, gpt_exceptions=None, gpt_args=None, returnWF=False, nodataValueAtSea=True,
+                 demResamplingMethod='BILINEAR_INTERPOLATION', imgResamplingMethod='BILINEAR_INTERPOLATION',
+                 alignToStandardGrid=False, standardGridOriginX=0, standardGridOriginY=0,
+                 speckleFilter=False, refarea='gamma0')
+
     print('-' * 10)
-
-

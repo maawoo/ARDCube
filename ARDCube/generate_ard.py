@@ -31,29 +31,47 @@ def generate_ard(sensor, debug=False):
 
     print(f"#### Start processing of {sensor} data...")
     if sensor == 'sentinel1':
-        process_sar(settings=settings)
+        process_sar(settings=settings,
+                    debug=debug)
     else:
         process_optical(settings=settings,
                         sensor=sensor,
                         debug=debug)
 
 
-def process_sar(settings):
+def process_sar(settings, debug):
     """..."""
 
-    ## TODO: Implement SAR processing with pyroSAR container
+    Client.debug = debug
+    if debug:
+        quiet = False
+    else:
+        quiet = True
 
-    pyro_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1_pyrosar')
-    level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1')
-    utils.isdir_mkdir([pyro_dir, level2_dir])
+    snap_py_path = os.path.join(ROOT_DIR, 'ARDCube', 'pyroSAR', 'snap.py')
+    in_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'sentinel1')
+    out_dir_pyro = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1_pyrosar')
+    out_dir_force = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1')
+    utils.isdir_mkdir([out_dir_pyro, out_dir_force])
 
-    # _crop_by_aoi(settings=settings, directory_src=pyro_dir, directory_dst=level2_dir)
-    # force.cube_dataset(directory=level2_dir)
-    # force.create_mosaics(directory=level2_dir)
-    # force.create_kml_grid(directory=level2_dir)
+    aoi_path = utils.get_aoi_path(settings)
+    dem_path, dem_nodata = utils.get_dem_path(settings)
+
+    Client.execute(PYROSAR_PATH, ["python", snap_py_path, in_dir, out_dir_pyro, aoi_path, dem_path],
+                   options=["--cleanenv"], quiet=quiet)
+
+    print("\n#### Cropping files to AOI...")
+    _crop_by_aoi(settings=settings, directory_src=out_dir_pyro, directory_dst=out_dir_force)
+    print("\n#### Datacubing via FORCE....")
+    force.cube_dataset(directory=out_dir_force)
+
+    print("\n#### Finished processing! Creating additional outputs...\n")
+    force.create_mosaics(directory=out_dir_force)
+    force.create_kml_grid(directory=out_dir_force)
+    print("Done!")
 
 
-def process_optical(settings, sensor, debug_force):
+def process_optical(settings, sensor, debug):
     """..."""
 
     Client.debug = debug
