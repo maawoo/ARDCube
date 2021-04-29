@@ -45,7 +45,7 @@ measurements:
 
     - name: 'pixel_qa'
       ## https://force-eo.readthedocs.io/en/latest/howto/qai.html#quality-bits-in-force
-      dtype: uint16
+      dtype: int16
       nodata: 1
       units: 'bit_index'
       flags_definition:
