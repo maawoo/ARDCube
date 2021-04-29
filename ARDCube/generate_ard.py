@@ -15,7 +15,23 @@ from rasterio.windows import get_data_window
 
 
 def generate_ard(sensor, debug=False):
-    """..."""
+    """Main function of this module. Will collect necessary information from 'settings.prm' and either run
+    process_sar() or process_optical(), depending on chosen sensor.
+
+    Parameters
+    ----------
+    sensor: string
+        Name of the sensor that Analysis Ready Data should be processed for. It is assumed that a subdirectory
+        containing level-1 data for this sensor already exist in /{DataDirectory}/level1/{sensor} .
+        Valid options are defined in SAT_DICT.keys().
+        Example: 'landsat8'
+    debug: boolean (optional)
+        Optional parameter to print Singularity debugging information.
+
+    Returns
+    -------
+    None
+    """
 
     ## Get settings from 'settings.prm'
     settings = utils.get_settings()
@@ -40,7 +56,19 @@ def generate_ard(sensor, debug=False):
 
 
 def process_sar(settings, debug):
-    """..."""
+    """
+
+    Parameters
+    ----------
+    settings: ConfigParser object
+        A dictionary-like object created by ARDCube.utils.get_settings
+    debug: boolean (optional)
+        Optional parameter to print Singularity debugging information.
+
+    Returns
+    -------
+    None
+    """
 
     Client.debug = debug
     if debug:
@@ -57,8 +85,11 @@ def process_sar(settings, debug):
     aoi_path = utils.get_aoi_path(settings)
     dem_path, dem_nodata = utils.get_dem_path(settings)
 
-    Client.execute(PYROSAR_PATH, ["python", snap_py_path, in_dir, out_dir_pyro, aoi_path, dem_path],
-                   options=["--cleanenv"], quiet=quiet)
+    out = Client.execute(PYROSAR_PATH, ["python", snap_py_path, in_dir, out_dir_pyro, aoi_path, dem_path],
+                         options=["--cleanenv"], quiet=quiet, stream=True)
+
+    for line in out:
+        print(line, end='')
 
     print("\n#### Cropping files to AOI...")
     _crop_by_aoi(settings=settings, directory_src=out_dir_pyro, directory_dst=out_dir_force)
@@ -72,7 +103,24 @@ def process_sar(settings, debug):
 
 
 def process_optical(settings, sensor, debug):
-    """..."""
+    """
+
+    Parameters
+    ----------
+    settings: ConfigParser object
+        A dictionary-like object created by ARDCube.utils.get_settings
+    sensor: string
+        Name of the sensor that Analysis Ready Data should be processed for. It is assumed that a subdirectory
+        containing level-1 data for this sensor already exist in /{DataDirectory}/level1/{sensor} .
+        Valid options are defined in SAT_DICT.keys().
+        Example: 'landsat8'
+    debug: boolean
+        Singularity debugging information is printed if set to True.
+
+    Returns
+    -------
+    None
+    """
 
     Client.debug = debug
     if debug:
@@ -107,42 +155,39 @@ def process_optical(settings, sensor, debug):
 
 
 def _mod_force_template_prm(settings, sensor):
-    """..."""
+    """Helper function for process_optical(). The template parameter file used for the 'force-level2' module of FORCE
+    will be filled with parameters defined in the ['PROCESSING'] section of 'settings.prm'.
+    Instead of overwriting the template, a modified and timestamped copy will be saved."""
 
-    ## Get DataDirectory
-    data_dir = settings['GENERAL']['DataDirectory']
-
-    ## Get path to default parameter file
-    prm_path = os.path.join(ROOT_DIR, 'settings/force', 'FORCE_params__template.prm')
+    ## Get path to default parameter file and get all lines as a list
+    prm_path = os.path.join(ROOT_DIR, 'settings', 'force', 'FORCE_params__template.prm')
     if not os.path.isfile(prm_path):
         raise FileNotFoundError(f"{prm_path} could not be found.")
 
-    ## Read parameter file and get all lines as a list
     with open(prm_path, 'r') as file:
-        lines = file.readlines()
+        prm_lines = file.readlines()
 
     ## Get all necessary information to fill parameters that are not pre-defined
-    file_queue = os.path.join(data_dir, f'level1/{sensor}', 'queue.txt')
-    dir_level2 = os.path.join(data_dir, f'level2/{sensor}')
-    dir_log = os.path.join(data_dir, f'log/{sensor}')
+    data_dir = settings['GENERAL']['DataDirectory']
+    file_queue = os.path.join(data_dir, 'level1', sensor, 'queue.txt')
+    dir_level2 = os.path.join(data_dir, 'level2', sensor)
+    dir_log = os.path.join(data_dir, 'log', sensor)
     dir_tmp = os.path.join(data_dir, 'temp')
-    file_dem, dem_nodata = utils.get_dem_path(settings)
+    file_dem, dem_nodata = utils.get_dem_path(settings=settings)
     nproc = settings['PROCESSING']['NPROC']
     nthread = settings['PROCESSING']['NTHREAD']
 
-    ## These paths might not exists at this point, so before running FORCE we should make sure they do!
-    paths_to_check = [dir_level2, dir_log, dir_tmp]
-    utils.isdir_mkdir(paths_to_check)
+    ## Create these directories (if necessary) before running FORCE
+    utils.isdir_mkdir(directory=[dir_level2, dir_log, dir_tmp])
 
-    ## Lists of parameter fields that need to be changed (parameters) and the content that will be used (values)
-    ## The order of both lists need to be the same!!
+    ## Parameter fields that need to be changed (parameters) and the content that will be used (values)
     parameters = ['FILE_QUEUE', 'DIR_LEVEL2', 'DIR_LOG', 'DIR_TEMP', 'FILE_DEM', 'DEM_NODATA', 'NPROC', 'NTHREAD']
     values = [file_queue, dir_level2, dir_log, dir_tmp, file_dem, dem_nodata, nproc, nthread]
 
     ## Search for parameters in the list of lines and return the index
     indexes = []
     for p in parameters:
-        ind = [i for i, item in enumerate(lines) if item.startswith(p)]
+        ind = [i for i, item in enumerate(prm_lines) if item.startswith(p)]
         if len(ind) != 1:
             raise IndexError(f"The field '{p}' was found more than once in FORCE_params__template.prm, which "
                              f"should not be the case!")
@@ -151,23 +196,23 @@ def _mod_force_template_prm(settings, sensor):
 
     ## Change parameter fields at selected indexes
     for p, v, i in zip(parameters, values, indexes):
-        lines[i] = f"{p} = {v}\n"
+        prm_lines[i] = f"{p} = {v}\n"
 
     ## Define new output directory and create it if necessary
-    prm_dir_new = os.path.join(ROOT_DIR, 'settings/force/history')
-    utils.isdir_mkdir(prm_dir_new)
+    prm_dir_new = os.path.join(ROOT_DIR, 'settings', 'force', 'history')
+    utils.isdir_mkdir(directory=prm_dir_new)
 
     ## Create copy of FORCE_params__template.prm with adjusted parameter fields and return full path
     now = datetime.now().strftime('%Y%m%dT%H%M%S')
     prm_path_new = os.path.join(prm_dir_new, f"FORCE_params__{sensor}_{now}.prm")
     with open(prm_path_new, 'w') as file:
-        file.writelines(lines)
+        file.writelines(prm_lines)
 
     return prm_path_new, dir_level2
 
 
 def _check_force_file_queue(prm_path):
-    """..."""
+    """Helper function for process_optical(). """
 
     ## Read parameter file and get all lines as a list
     with open(prm_path, 'r') as file:

@@ -16,3 +16,5 @@ dem_create(src=vrt, dst=out_file,
            t_srs=4326,
            resampling_method='bilinear',
            geoid_convert=True, geoid='EGM96')
+
+os.remove(vrt)

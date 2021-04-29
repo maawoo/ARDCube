@@ -12,7 +12,7 @@ import geopandas as gpd
 
 
 def download_level1(sensor, debug=False):
-    """Main function of this module. Will collect necessary query information from settings.prm and either run
+    """Main function of this module. Will collect necessary query information from 'settings.prm' and either run
     download_sar() or download_optical(), depending on chosen sensor.
 
     Parameters
@@ -37,7 +37,7 @@ def download_level1(sensor, debug=False):
     query = _collect_query(settings=settings,
                            sensor=sensor)
 
-    print(f"#### Start download query for {sensor}...")
+    print(f"#### Running query for {sensor}...")
     if sensor == 'sentinel1':
         download_sar(query=query)
     else:
@@ -47,7 +47,7 @@ def download_level1(sensor, debug=False):
 
 def download_sar(query):
     """Download Sentinel-1 GRD data from Copernicus Open Access Hub based on provided query. Data is downloaded to the
-    subdirectory /level1/{sensor} of DataDirectory (as defined in settings.prm).
+    directory /{DataDirectory}/level1/{sensor} .
     The package sentinelsat is used here. For any related issues check
     the relevant documentation: https://sentinelsat.readthedocs.io/en/latest/api_overview.html
     or the Github repo: https://github.com/sentinelsat/sentinelsat
@@ -62,7 +62,7 @@ def download_sar(query):
     None
     """
 
-    _sentinelsat_logging(query['log_dir'])
+    _sentinelsat_logging(directory=query['log_dir'])
 
     api = SentinelAPI(user=query['username'],
                       password=query['password'],
@@ -82,6 +82,10 @@ def download_sar(query):
                               platformname='Sentinel-1',
                               producttype='GRD',
                               orbitdirection=query['direction'])
+    except Exception as e:
+        raise RuntimeError(f"Failed to return query because of error: {e} \n"
+                           f"Please check log file for more information!\n"
+                           f"The log file is located at: {query['log_dir']}")
 
     while True:
         answer = input(f"\n{len(query)} Sentinel-1 GRD scenes were found using the following query parameters:\n"
@@ -96,9 +100,9 @@ def download_sar(query):
             try:
                 api.download_all(api_query, directory_path=query['out_dir'])
             except Exception as e:
-                print(f"Download was cancelled because of exception: {e}\n"
-                      f"Please check log file for more information!\n"
-                      f"Log file is located at: {query['log_dir']}")
+                raise RuntimeError(f"Failed to download because of error: {e} \n"
+                                   f"Please check log file for more information!\n"
+                                   f"The log file is located at: {query['log_dir']}")
             break
         elif answer in ['n', 'no']:
             print("\n#### Download cancelled...")
@@ -110,7 +114,7 @@ def download_sar(query):
 
 def download_optical(query, debug):
     """Download optical satellite data from Google Cloud Storage based on provided query. Data is downloaded to the
-    subdirectory /level1/{sensor} of DataDirectory (as defined in settings.prm).
+    directory /{DataDirectory}/level1/{sensor} .
     The FORCE Singularity container is executed with the module 'force-level1-csd'. For any related issues check the
     relevant documentation: https://force-eo.readthedocs.io/en/latest/howto/level1-csd.html#tut-l1csd
     or the Github repo: https://github.com/davidfrantz/force
@@ -153,7 +157,7 @@ def download_optical(query, debug):
 
     ## Before starting the download, ask for user confirmation.
     while True:
-        answer = input(f"Output directory: {query['out_dir']} \n"
+        answer = input(f"\nOutput directory: {query['out_dir']} \n"
                        f"Do you want to proceed with the download? (y/n)")
 
         if answer in ['y', 'yes']:
@@ -178,7 +182,7 @@ def download_optical(query, debug):
 
 
 def _collect_query(settings, sensor):
-    """Helper function to collect information for download query.
+    """Helper function for download_level1() to collect all necessary information for the download query.
 
     Parameters
     ----------
@@ -221,7 +225,8 @@ def _collect_query(settings, sensor):
 
 
 def _sentinelsat_logging(directory):
-    """Helper function to set sentinelsat logging. https://sentinelsat.readthedocs.io/en/stable/api.html#logging"""
+    """Helper function for download_sar() to set sentinelsat logging.
+    https://sentinelsat.readthedocs.io/en/stable/api.html#logging"""
 
     utils.isdir_mkdir(directory)
     log_file = os.path.join(directory, f"{datetime.now().strftime('%Y%m%dT%H%M%S__sentinel1__download_level1')}.log")
@@ -229,7 +234,8 @@ def _sentinelsat_logging(directory):
 
 
 def _sentinelsat_orbitdir(settings):
-    """Helper function to get SAR orbit direction from settings.prm and format output accordingly."""
+    """Helper function for download_sar() to get SAR orbit direction from 'settings.prm' and format output
+    accordingly."""
 
     field = settings['DOWNLOAD']['SAROrbitDirection']
     if field == 'both':
@@ -243,7 +249,7 @@ def _sentinelsat_orbitdir(settings):
 
 
 def _sentinelsat_footprint(aoi_path, simplify=False):
-    """Helper function to create footprint from AOI file in WKT format and WGS84 projection."""
+    """Helper function for download_sar() to create footprint from AOI file in WKT format and WGS84 projection."""
 
     ## Read AOI file, convert to WGS84 and convert to json string
     ## Also simplify the polygon with convex_hull if option set to True
