@@ -187,7 +187,7 @@ def _update_file_dict(level2_dir, file_dict):
         return file_dict
 
 
-def _get_date_string(file_path, do_format=False):
+def _get_date_string(file_path, sensor=None, do_format=False):
     """Extracts the date string from a file name."""
 
     f_base = os.path.basename(file_path)
@@ -200,16 +200,19 @@ def _get_date_string(file_path, do_format=False):
     date = date.replace("_", "")
 
     if do_format:
-        return _format_date_string(date=date)
+        return _format_date_string(date=date, sensor=sensor)
     else:
         return date
 
 
-def _format_date_string(date):
+def _format_date_string(date, sensor):
     """Formats a date string from either YYYYmmdd or YYYYmmddTHHMMSS to YYYY-mm-ddTHH:MM:SS.000Z."""
 
     if len(date) == 8:
-        date = datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%dT10:00:00.000Z')  # Use 10 am as a default?
+        if sensor.startswith('landsat'):
+            date = datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%dT10:00:00.000Z')
+        else:
+            date = datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%dT10:30:00.000Z')
     elif len(date) == 15:
         date = datetime.strptime(date, '%Y%m%dT%H%M%S').strftime('%Y-%m-%dT%H:%M:%S.000Z')
     else:
@@ -322,7 +325,7 @@ def _get_metadata(sensor, file_path):
     :return: Dictionary with entries for each metadata field.
     """
 
-    date = _get_date_string(file_path=file_path, do_format=True)
+    date = _get_date_string(file_path=file_path, sensor=sensor, do_format=True)
 
     if sensor == 'sentinel1':
         orbit = _s1_is_asc_or_desc(file_path=file_path)
