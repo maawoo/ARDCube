@@ -1,5 +1,5 @@
 from ARDCube.config import FORCE_PATH
-import ARDCube.utils as utils
+import ARDCube.utils.general as utils
 
 import os
 import sys

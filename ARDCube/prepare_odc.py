@@ -1,5 +1,5 @@
 from ARDCube.config import ROOT_DIR
-from ARDCube.utils import get_settings
+from ARDCube.utils.general import get_settings
 
 import os
 import re

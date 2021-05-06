@@ -77,7 +77,7 @@ def create_srtm(settings):
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'dem')
     isdir_mkdir(out_dir)
 
-    dem_py_path = os.path.join(ROOT_DIR, 'ARDCube', 'pyroSAR', 'srtm.py')
+    dem_py_path = os.path.join(ROOT_DIR, 'singularity', 'pyroSAR', 'py_scripts', 'srtm.py')
     aoi_path = _aoi_wgs84(aoi_path=get_aoi_path(settings))
     aoi_name = os.path.splitext(os.path.basename(aoi_path))[0]
 

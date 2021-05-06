@@ -1,6 +1,6 @@
 from ARDCube.config import FORCE_PATH, SAT_DICT
-import ARDCube.utils as utils
-import ARDCube.utils_force as force
+import ARDCube.utils.general as utils
+import ARDCube.utils.force as force
 
 import os
 import logging

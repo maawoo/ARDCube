@@ -1,6 +1,6 @@
 from ARDCube.config import ROOT_DIR, FORCE_PATH, PYROSAR_PATH, SAT_DICT
-import ARDCube.utils as utils
-import ARDCube.utils_force as force
+import ARDCube.utils.general as utils
+import ARDCube.utils.force as force
 
 import os
 import glob
@@ -76,7 +76,7 @@ def process_sar(settings, debug):
     else:
         quiet = True
 
-    snap_py_path = os.path.join(ROOT_DIR, 'ARDCube', 'pyroSAR', 'snap.py')
+    snap_py_path = os.path.join(ROOT_DIR, 'ARDCube', 'singularity', 'pyrosar', 'py_scripts', 'snap.py')
     in_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'sentinel1')
     out_dir_pyro = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1_pyrosar')
     out_dir_force = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1')
