@@ -71,9 +71,6 @@ From: ubuntu:18.04
         [ "$line" = "updates=0" ] && sleep 2 && pkill -TERM -f "snap/jre/bin/java"
     done
 
-    ## Set usable memory to 12GB
-    echo "-Xmx12G" > /opt/snap/bin/gpt.vmoptions
-
 
     echo -e "######################### \nInstalling Conda & pyroSAR \n#########################"
 
@@ -103,13 +100,12 @@ From: ubuntu:18.04
     conda update -y -n base conda
     conda config --system --prepend channels conda-forge
     conda config --system --set auto_update_conda false
-    conda config --system --set show_channel_urls true
 
     ## Install pyroSAR
     conda install -y --channel conda-forge pyroSAR
 
 
-    ## Cleanup
+    ## General cleanup
     conda clean -y --all
     apt-get -y autoremove --purge
     apt-get -y clean
