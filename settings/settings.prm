@@ -26,3 +26,10 @@ DEM_NoData = -9999
 
 NPROC = 1
 NTHREAD = 4
+
+## SAR only
+TargetResolution = 20
+Polarizations = all
+Scaling = dB
+SpeckleFilter = False
+RefArea = gamma0

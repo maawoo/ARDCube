@@ -76,29 +76,27 @@ def process_sar(settings, debug):
     else:
         quiet = True
 
-    snap_py_path = os.path.join(ROOT_DIR, 'ARDCube', 'singularity', 'pyrosar', 'py_scripts', 'snap.py')
-    in_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'sentinel1')
-    out_dir_pyro = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1_pyrosar')
-    out_dir_force = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1')
-    utils.isdir_mkdir([out_dir_pyro, out_dir_force])
+    p = _collect_params(settings=settings)
+    utils.isdir_mkdir([p['out_dir_tmp'], p['out_dir']])
 
-    aoi_path = utils.get_aoi_path(settings)
-    dem_path, dem_nodata = utils.get_dem_path(settings)
-
-    out = Client.execute(PYROSAR_PATH, ["python", snap_py_path, in_dir, out_dir_pyro, aoi_path, dem_path],
+    ## ..
+    out = Client.execute(PYROSAR_PATH, ["python", p['snap_py'],
+                                        p['in_dir'], p['out_dir_tmp'], p['tr'], p['pol'], p['aoi_path'], p['scaling'],
+                                        p['dem_path'], p['dem_nodata'], p['speckle'], p['refarea']],
                          options=["--cleanenv"], quiet=quiet, stream=True)
 
     for line in out:
         print(line, end='')
 
     print("\n#### Cropping files to AOI...")
-    _crop_by_aoi(settings=settings, directory_src=out_dir_pyro, directory_dst=out_dir_force)
+    _crop_by_aoi(settings=settings, directory_src=p['out_dir_tmp'], directory_dst=p['out_dir'])
+
     print("\n#### Datacubing via FORCE....")
-    force.cube_dataset(directory=out_dir_force)
+    force.cube_dataset(directory=p['out_dir'])
 
     print("\n#### Finished processing! Creating additional outputs...\n")
-    force.create_mosaics(directory=out_dir_force)
-    force.create_kml_grid(directory=out_dir_force)
+    force.create_mosaics(directory=p['out_dir'])
+    force.create_kml_grid(directory=p['out_dir'])
     print("Done!")
 
 
@@ -152,6 +150,25 @@ def process_optical(settings, sensor, debug):
 
     else:
         print("\n#### Processing cancelled...")
+
+
+def _collect_params(settings):
+    """Helper function for process_sar() to collect all necessary parameters."""
+
+    return {
+        'snap_py': os.path.join(ROOT_DIR, 'ARDCube', 'singularity', 'pyrosar', 'py_scripts', 'snap.py'),
+        'in_dir': os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'sentinel1'),
+        'out_dir_tmp': os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1_pyrosar'),
+        'out_dir': os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1'),
+        'aoi_path': utils.get_aoi_path(settings=settings),
+        'dem_path': utils.get_dem_path(settings=settings)[0],
+        'dem_nodata': utils.get_dem_path(settings=settings)[1],
+        'tr': settings['PROCESSING']['TargetResolution'],
+        'pol': settings['PROCESSING']['Polarizations'],
+        'scaling': settings['PROCESSING']['Scaling'],
+        'speckle': settings['PROCESSING']['SpeckleFilter'],
+        'refarea': settings['PROCESSING']['RefArea']
+    }
 
 
 def _mod_force_template_prm(settings, sensor):
