@@ -74,16 +74,30 @@ def process_sar(settings, debug):
     p = _collect_params(settings=settings)
     utils.isdir_mkdir([p['out_dir_tmp'], p['out_dir']])
 
-    ## ..
-    out = Client.execute(PYROSAR_PATH, ["python", p['snap_py'],
-                                        p['in_dir'], p['out_dir_tmp'], p['tr'], p['pol'], p['aoi_path'], p['scaling'],
-                                        p['dem_path'], p['dem_nodata'], p['speckle'], p['refarea']],
-                         options=["--cleanenv"], quiet=quiet, stream=True)
+    n_scenes = len(glob.glob1(p['in_dir'], 'S1*zip'))
 
-    for line in out:
-        print(line, end='')
+    while True:
+        answer = input(f"{n_scenes} level-1 scenes were found in {p['in_dir']}\n"
+                       f"Do you want to proceed with the batch processing of all {n_scenes} scenes? (y/n)")
 
-    print("\n#### Cropping files to AOI...")
+        if answer in ['y', 'yes']:
+            ## Execute snap.py inside pyroSAR Singularity container
+            out = Client.execute(PYROSAR_PATH, ["python", p['snap_py'],
+                                                p['in_dir'], p['out_dir_tmp'], p['tr'], p['pol'], p['aoi_path'],
+                                                p['scaling'],
+                                                p['dem_path'], p['dem_nodata'], p['speckle'], p['refarea']],
+                                 options=["--cleanenv"], quiet=quiet, stream=True)
+            for line in out:
+                print(line, end='')
+
+        elif answer in ['n', 'no']:
+            print("\n#### Processing cancelled...")
+            break
+        else:
+            print(f"\n{answer} is not a valid answer!")
+            continue
+
+    print("\n#### Cropping rasters to AOI...")
     _crop_by_aoi(settings=settings, directory_src=p['out_dir_tmp'], directory_dst=p['out_dir'])
 
     print("\n#### Reprojecting rasters and creating non-overlapping tiles...")
