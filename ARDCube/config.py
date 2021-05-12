@@ -13,3 +13,9 @@ SAT_DICT = {'sentinel1': None,
             'landsat5': 'LT05',
             'landsat7': 'LE07',
             'landsat8': 'LC08'}
+
+## Available DEM types that can be created with pyroSAR as defined here:
+## https://pyrosar.readthedocs.io/en/latest/pyroSAR.html#pyroSAR.auxdata.dem_autoload
+## Note that some sources might require authentication, which can be added to the parameters listed in the script
+## '/settings/pyrosar/srtm.py' if necessary.
+DEM_TYPES = ['AW3D30', 'SRTM 1Sec HGT', 'SRTM 3Sec', 'TDX90m']
