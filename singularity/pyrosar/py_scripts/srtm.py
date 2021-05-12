@@ -14,7 +14,7 @@ with Vector(aoi_path) as vec:
                  vrt=vrt, buffer=0.02, username=None, password=None, product='dem')
 
 dem_create(src=vrt, dst=out_file,
-           t_srs=4326,
+           t_srs=4326, tr=None,
            resampling_method='bilinear',
            geoid_convert=True, geoid='EGM96')
 
