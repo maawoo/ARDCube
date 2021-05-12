@@ -5,12 +5,13 @@ from spatialist import Vector
 
 aoi_path = sys.argv[1]
 out_file = sys.argv[2]
+dem_type = sys.argv[3]
 
 vrt = f"{os.path.splitext(out_file)[0]}.vrt"
 
 with Vector(aoi_path) as vec:
-    dem_autoload(geometries=[vec], demType='SRTM 1Sec HGT',
-                 vrt=vrt, buffer=0.02)
+    dem_autoload(geometries=[vec], demType=dem_type,
+                 vrt=vrt, buffer=0.02, username=None, password=None, product='dem')
 
 dem_create(src=vrt, dst=out_file,
            t_srs=4326,
