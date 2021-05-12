@@ -24,6 +24,7 @@ CopernicusPassword =
 DEM = LidarDEM_10m_uc_glance.tif 
 DEM_NoData = -9999
 
+## Optical only
 NPROC = 1
 NTHREAD = 4
 

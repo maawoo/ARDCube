@@ -18,14 +18,10 @@ def download_level1(sensor, debug=False):
     Parameters
     ----------
     sensor: string
-        Name of the sensor for which data should be downloaded for. Valid options are defined in SAT_DICT.keys().
+        Name of the sensor for which data should be downloaded for.
         Example: 'landsat8'
     debug: boolean (optional)
-        Optional parameter to print Singularity debugging information.
-
-    Returns
-    -------
-    None
+        Optional parameter to print Singularity debugging information. Only passed to download_optical().
     """
 
     settings = utils.get_settings()
@@ -56,10 +52,6 @@ def download_sar(query):
     ----------
     query: dictionary
         Dictionary with query parameters created by helper function _collect_query().
-
-    Returns
-    -------
-    None
     """
 
     _sentinelsat_logging(directory=query['log_dir'])
@@ -124,11 +116,7 @@ def download_optical(query, debug):
     query: dictionary
         Dictionary with query parameters created by helper function _collect_query().
     debug: boolean (optional)
-        Optional parameter to print Singularity debugging information.
-
-    Returns
-    -------
-    None
+        Singularity debugging information is printed if set to True.
     """
 
     Client.debug = debug
@@ -182,21 +170,7 @@ def download_optical(query, debug):
 
 
 def _collect_query(settings, sensor):
-    """Helper function for download_level1() to collect all necessary information for the download query.
-
-    Parameters
-    ----------
-    settings: ConfigParser object
-        A dictionary-like object created by ARDCube.utils.get_settings
-    sensor: string
-        Name of the sensor for which query information should be collected for.
-        Example: 'landsat8'
-
-    Returns
-    -------
-    query: dictionary
-        Dictionary with necessary query information. Information differs, depending on optical or SAR sensor.
-    """
+    """Helper function for download_level1() to collect all necessary information for the download query."""
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
     utils.isdir_mkdir(out_dir)

@@ -8,7 +8,7 @@ import geopandas as gpd
 
 
 def get_settings():
-    """Gets the path of the settings file, reads it, checks it and returns it as a ConfigParser object."""
+    """Returns the content of 'settings.prm' as a dictionary-like ConfigParser object."""
 
     settings_file = os.path.join(ROOT_DIR, 'settings', 'settings.prm')
 
@@ -24,7 +24,7 @@ def get_settings():
 
 
 def get_aoi_path(settings):
-    """Returns the full path of the AOI file based on what was provided in the 'AOI' field in settings.prm"""
+    """Returns the full path of the AOI file based on what was provided in the 'AOI' field in 'settings.prm'"""
 
     aoi_field = settings['GENERAL']['AOI']
 
@@ -45,7 +45,7 @@ def get_aoi_path(settings):
 
 
 def get_dem_path(settings):
-    """Returns the full path of the DEM file based on what was provided in the 'DEM' field in settings.prm"""
+    """Returns the full path of the DEM file based on what was provided in the 'DEM' field in 'settings.prm'"""
 
     dem_field = settings['PROCESSING']['DEM']
 
@@ -105,7 +105,7 @@ def create_srtm(settings):
 
 
 def _aoi_wgs84(aoi_path):
-    """Convert AOI to WGS84 if necessary. Otherwise create_dem fails. """
+    """Convert AOI to WGS84 if necessary. (Otherwise DEM creation fails)"""
 
     aoi = gpd.read_file(aoi_path)
 
@@ -138,7 +138,7 @@ def _get_driver(suffix):
 
 
 def isdir_mkdir(directory):
-    """Helper function to create a directory (or each directory in a list) if it doesn't exist already."""
+    """Create a directory (or each directory in a list) if it doesn't exist already."""
 
     if isinstance(directory, str):
         if not os.path.isdir(directory):

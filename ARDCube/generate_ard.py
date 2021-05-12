@@ -15,28 +15,20 @@ from rasterio.windows import get_data_window
 
 
 def generate_ard(sensor, debug=False):
-    """Main function of this module. Will collect necessary information from 'settings.prm' and either run
-    process_sar() or process_optical(), depending on chosen sensor.
+    """Main function of this module. Will either run process_sar() or process_optical(), depending on chosen sensor.
 
     Parameters
     ----------
     sensor: string
         Name of the sensor that Analysis Ready Data should be processed for. It is assumed that a subdirectory
         containing level-1 data for this sensor already exist in /{DataDirectory}/level1/{sensor} .
-        Valid options are defined in SAT_DICT.keys().
         Example: 'landsat8'
     debug: boolean (optional)
         Optional parameter to print Singularity debugging information.
-
-    Returns
-    -------
-    None
     """
 
-    ## Get settings from 'settings.prm'
     settings = utils.get_settings()
 
-    ## Check if sensor is supported and if level-1 directory exists
     if sensor not in list(SAT_DICT.keys()):
         raise ValueError(f"{sensor} is not supported!")
 
@@ -56,18 +48,21 @@ def generate_ard(sensor, debug=False):
 
 
 def process_sar(settings, debug):
-    """
+    """Process SAR satellite data to an ARD format.
+    First, radiometrically terrain-corrected gamma nought backscatter is produced via the pyroSAR Singularity container.
+    This is achieved by executing the script /settings/pyrosar/snap.py inside the container and passing all necessary
+    parameters as additional arguments. The script itself uses pyroSAR's snap.geocode module.
+    As a second step, the processed scenes are clipped to the AOI using _crop_by_aoi(), while also excluding any rasters
+    that only have no data values located inside the AOI.
+    Finally, force.cube_dataset() is used for reprojection and to create non-overlapping tiles based on a predefined
+    grid.
 
     Parameters
     ----------
     settings: ConfigParser object
         A dictionary-like object created by ARDCube.utils.get_settings
-    debug: boolean (optional)
-        Optional parameter to print Singularity debugging information.
-
-    Returns
-    -------
-    None
+    debug: boolean
+        Singularity debugging information is printed if set to True.
     """
 
     Client.debug = debug
@@ -91,17 +86,21 @@ def process_sar(settings, debug):
     print("\n#### Cropping files to AOI...")
     _crop_by_aoi(settings=settings, directory_src=p['out_dir_tmp'], directory_dst=p['out_dir'])
 
-    print("\n#### Datacubing via FORCE....")
+    print("\n#### Reprojecting rasters and creating non-overlapping tiles...")
     force.cube_dataset(directory=p['out_dir'])
 
     print("\n#### Finished processing! Creating additional outputs...\n")
     force.create_mosaics(directory=p['out_dir'])
     force.create_kml_grid(directory=p['out_dir'])
+
     print("Done!")
 
 
 def process_optical(settings, sensor, debug):
-    """
+    """Process optical satellite data to an ARD format.
+    The module 'force-level2' will be executed inside the FORCE Singularity container.
+    _mod_force_template_prm() is used to create a modified and timestamped copy of the template parameter file
+    /settings/force/FORCE_params__template.prm , which is passed to the container to start the processing.
 
     Parameters
     ----------
@@ -114,10 +113,6 @@ def process_optical(settings, sensor, debug):
         Example: 'landsat8'
     debug: boolean
         Singularity debugging information is printed if set to True.
-
-    Returns
-    -------
-    None
     """
 
     Client.debug = debug
@@ -126,12 +121,7 @@ def process_optical(settings, sensor, debug):
     else:
         quiet = True
 
-    ## A timestamped copy of FORCE_params__template.prm will be filled with all necessary information and
-    ## used for processing.
     prm_file, out_dir = _mod_force_template_prm(settings, sensor)
-
-    ## Get path to file queue from parameter file and check how many scenes will be processed.
-    ## The function asks for user confirmation and returns a boolean.
     check = _check_force_file_queue(prm_file)
 
     if check:
@@ -146,6 +136,7 @@ def process_optical(settings, sensor, debug):
         print("\n#### Finished processing! Creating additional outputs...\n")
         force.create_mosaics(directory=out_dir)
         force.create_kml_grid(directory=out_dir)
+
         print("Done!")
 
     else:
@@ -229,7 +220,9 @@ def _mod_force_template_prm(settings, sensor):
 
 
 def _check_force_file_queue(prm_path):
-    """Helper function for process_optical(). """
+    """Helper function for process_optical() to check how many scenes will be processed based on the file queue (a text
+    file automatically created by FORCE during data download). The function also asks for user confirmation and returns
+    a boolean, which is used in process_optical() to start or cancel the processing."""
 
     ## Read parameter file and get all lines as a list
     with open(prm_path, 'r') as file:
@@ -257,13 +250,11 @@ def _check_force_file_queue(prm_path):
     n_done = len([i for i, item in enumerate(lines_queue) if item.endswith('DONE\n')])
     n_queued = len([i for i, item in enumerate(lines_queue) if item.endswith('QUEUED\n')])
 
-    ## Before starting the batch processing, ask for user confirmation. Return boolean depending on answer.
     while True:
         answer = input(f"\nThe following queue file will be queried by FORCE: \n{queue_path}\n"
                        f"{n_done} scenes are marked as 'DONE' \n{n_queued} scenes are marked as 'QUEUED'\n"
                        f"Do you want to proceed with the batch processing of all {n_queued} scenes marked as 'QUEUED'?"
                        f" (y/n)")
-
         if answer in ['y', 'yes']:
             return True
         elif answer in ['n', 'no']:
@@ -276,7 +267,7 @@ def _check_force_file_queue(prm_path):
 def _crop_by_aoi(settings, directory_src, directory_dst):
     """..."""
 
-    ## Define log-file
+    ## Define log file
     log_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'log')
     utils.isdir_mkdir(log_dir)
     log_file = os.path.join(log_dir,
@@ -287,19 +278,19 @@ def _crop_by_aoi(settings, directory_src, directory_dst):
     for file in glob.iglob(os.path.join(directory_src, '**/*.tif'), recursive=True):
         file_list.append(file)
 
-    ## Get CRS from first file. All other files are assumed to be in the same CRS!
+    ## Get CRS from first file. All other files are assumed to be in the same CRS
     with rasterio.open(file_list[0]) as raster:
         dst_crs = raster.crs
 
-    ## Get AOI path and get reprojected features
+    ## Get AOI path and reprojected features
     aoi_path = utils.get_aoi_path(settings)
     features = _get_aoi_features(aoi_path=aoi_path, crs=dst_crs)
 
-    ## Set multiprocessing pool and print useful message
+    ## Set multiprocessing pool
     nproc = settings['PROCESSING']['NPROC']
     pool = mp.Pool(nproc)
-    print(f"{len(file_list)}")
 
+    ## Apply function _do_crop() to each file
     ## TODO: Somehow implement progress bar or something else?
     result_objects = [pool.apply_async(_do_crop, args=(file, features, directory_dst)) for file in file_list]
     results = [f"{r.get()[0]} - {r.get()[1]}" for r in result_objects]
@@ -307,20 +298,36 @@ def _crop_by_aoi(settings, directory_src, directory_dst):
     pool.close()
     pool.join()
 
-    ## TODO: Logging could be improved, but needs some careful work/testing because of parallelism
-    ## https://docs.python.org/3/library/multiprocessing.html#logging
     with open(log_file, 'w') as f:
         for item in results:
             f.write("%s\n" % item)
 
 
 def _do_crop(file, features, directory_dst):
+    """Helper function executed in _crop_by_aoi() which does the actual cropping per file.
 
-    ## TODO: Rewrite this without the temporary file.
+    Parameters
+    ----------
+    file: str
+        Path to the file that will be cropped
+    features: list of str
+        List of geometry features from AOI that will be used for cropping.
+    directory_dst: str
+        Destination directory
+
+    Returns
+    -------
+    tuple
+        Contains information for logging including the file path and a result/error message
+    """
+
+    ## TODO: Rewrite this without writing to a temporary file (?)
     ## Getting the data window and cropping the output file works without writing to a
     ## temporary file first, but I had some problems with getting the transform right.
     ## It works pretty well as is (especially with multiprocessing), so I'll just leave it for now.
     ## https://rasterio.readthedocs.io/en/latest/topics/windowed-rw.html?highlight=crop#data-windows
+    ## Additionally, there's probably a better way to check if only no data is inside the AOI than calculating the mean
+    ## of each raster...
 
     with rasterio.open(file) as src:
         try:
@@ -328,6 +335,7 @@ def _do_crop(file, features, directory_dst):
             out_meta = src.meta.copy()
             src_nodata = src.nodata
 
+            ## Exclude rasters with only no data values located inside AOI after masking
             if not out_image.mean() == src_nodata:
                 out_meta.update({"driver": "GTiff",
                                  "height": out_image.shape[1],
@@ -369,15 +377,17 @@ def _do_crop(file, features, directory_dst):
 
 
 def _get_aoi_features(aoi_path, crs):
-    """..."""
+    """Helper function to get AOI geometry features in an appropriate format for rasterio.mask.mask in _do_crop()."""
 
-    aoi_tmp = gpd.read_file(aoi_path)
-    aoi_tmp = aoi_tmp.to_crs({'init': crs})
+    aoi = gpd.read_file(aoi_path)
+
+    ## Create temporary AOI file in GeoJSON format (from whatever format it was in beforehand)
+    aoi_tmp = aoi.to_crs(crs)
     aoi_tmp_path = os.path.join(os.path.dirname(aoi_path),
                                 f"{os.path.splitext(os.path.basename(aoi_path))[0]}_tmp.geojson")
     aoi_tmp.to_file(aoi_tmp_path, driver="GeoJSON")
 
-    ## Open temporary AOI file with Fiona
+    ## Open temporary AOI file with Fiona and extract geometry features
     with fiona.open(aoi_tmp_path) as shape:
         features = [feature['geometry'] for feature in shape
                     if feature['geometry']]
