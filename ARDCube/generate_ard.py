@@ -156,7 +156,7 @@ def _collect_params(settings):
     """Helper function for process_sar() to collect all necessary parameters."""
 
     return {
-        'snap_py': os.path.join(ROOT_DIR, 'ARDCube', 'singularity', 'pyrosar', 'py_scripts', 'snap.py'),
+        'snap_py': os.path.join(ROOT_DIR, 'ARDCube', 'settings', 'pyrosar', 'snap.py'),
         'in_dir': os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'sentinel1'),
         'out_dir_tmp': os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1_pyrosar'),
         'out_dir': os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1'),

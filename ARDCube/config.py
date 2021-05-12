@@ -18,5 +18,5 @@ SAT_DICT = {'sentinel1': None,
 ## Available DEM types that can be created with pyroSAR as defined here:
 ## https://pyrosar.readthedocs.io/en/latest/pyroSAR.html#pyroSAR.auxdata.dem_autoload
 ## Note that some sources might require authentication, which can be added to the parameters listed in the script
-## '/settings/pyrosar/srtm.py' if necessary.
+## '/settings/pyrosar/dem.py' if necessary.
 DEM_TYPES = ['AW3D30', 'SRTM 1Sec HGT', 'SRTM 3Sec', 'TDX90m']
