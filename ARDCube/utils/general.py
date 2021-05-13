@@ -1,10 +1,11 @@
-from ARDCube.config import ROOT_DIR, PYROSAR_PATH
+from ARDCube.config import ROOT_DIR, PYROSAR_PATH, DEM_TYPES
 
 import configparser
 import os
 import sys
 from spython.main import Client
 import geopandas as gpd
+import rasterio
 
 
 def get_settings():
@@ -53,9 +54,9 @@ def get_dem_path(settings):
         raise RuntimeError("Field 'DEM': Input missing!")
 
     if not os.path.isfile(dem_field):
-        if dem_field == 'srtm':
-            dem_path = create_srtm(settings)
-            dem_nodata = -32768
+        ## Input -> pyroSAR.auxdata.dem_autoload option
+        if dem_field in DEM_TYPES:
+            dem_path, dem_nodata = create_dem(settings=settings, dem_type=dem_field)
         else:
             ## Input -> Filename (and the crystal ball says it's located in the /misc/dem subdirectory of DataDirectory)
             dem_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'dem', dem_field)
@@ -71,25 +72,25 @@ def get_dem_path(settings):
     return dem_path, dem_nodata
 
 
-def create_srtm(settings):
-    """Creates a 1Sec SRTM DEM for the AOI using the pyroSAR Singularity container."""
+def create_dem(settings, dem_type):
+    """Creates a Digital Elevation Model for the AOI using the pyroSAR Singularity container."""
 
     out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'dem')
     isdir_mkdir(out_dir)
 
-    dem_py_path = os.path.join(ROOT_DIR, 'singularity', 'pyroSAR', 'py_scripts', 'dem.py')
+    dem_py_path = os.path.join(ROOT_DIR, 'settings', 'pyroSAR', 'dem.py')
     aoi_path = _aoi_wgs84(aoi_path=get_aoi_path(settings))
     aoi_name = os.path.splitext(os.path.basename(aoi_path))[0]
 
-    dem_path = os.path.join(out_dir, f"SRTM_1Sec_DEM__{aoi_name}.tif")
+    dem_path = os.path.join(out_dir, f"{dem_type}__{aoi_name}.tif")
 
     if os.path.isfile(dem_path):
         while True:
             answer = input(f"{dem_path} already exist.\n"
-                           f"Do you want to create a new SRTM 1Sec DEM for your AOI and overwrite the existing file? \n"
-                           f"If not, the existing DEM file will be used for processing! (y/n)")
+                           f"Do you want to create a new {dem_type} DEM for your AOI and overwrite the existing file? \n"
+                           f"If not, the existing file will be used for processing! (y/n)")
             if answer in ['y', 'yes']:
-                Client.execute(PYROSAR_PATH, ["python", dem_py_path, aoi_path, dem_path],
+                Client.execute(PYROSAR_PATH, ["python", dem_py_path, aoi_path, dem_path, dem_type],
                                options=["--cleanenv"])
                 break
             elif answer in ['n', 'no']:
@@ -98,10 +99,13 @@ def create_srtm(settings):
                 print(f"{answer} is not a valid answer!")
                 continue
     else:
-        Client.execute(PYROSAR_PATH, ["python", dem_py_path, aoi_path, dem_path],
+        Client.execute(PYROSAR_PATH, ["python", dem_py_path, aoi_path, dem_path, dem_type],
                        options=["--cleanenv"])
 
-    return dem_path
+    with rasterio.open(dem_path) as dem:
+        dem_nodata = dem.nodata
+
+    return dem_path, dem_nodata
 
 
 def _aoi_wgs84(aoi_path):
