@@ -20,7 +20,7 @@ def generate_ard(sensor, debug=False):
     Parameters
     ----------
     sensor: string
-        Name of the sensor that Analysis Ready Data should be processed for. It is assumed that a subdirectory
+        Name of the sensor/dataset that Analysis Ready Data should be processed for. It is assumed that a subdirectory
         containing level-1 data for this sensor already exist in /{DataDirectory}/level1/{sensor} .
         Example: 'landsat8'
     debug: boolean (optional)
@@ -54,8 +54,8 @@ def process_sar(settings, debug):
     parameters as additional arguments. The script itself uses pyroSAR's snap.geocode module.
     As a second step, the processed scenes are clipped to the AOI using _crop_by_aoi(), while also excluding any rasters
     that only have no data values located inside the AOI.
-    Finally, force.cube_dataset() is used for reprojection and to create non-overlapping tiles based on a predefined
-    grid.
+    Finally, force.cube_dataset() is used to bring the dataset into the same data cube format (projection &
+    non-overlapping grid) as already processed optical datasets.
 
     Parameters
     ----------
@@ -110,11 +110,11 @@ def process_sar(settings, debug):
     print("Done!")
 
 
-def process_optical(settings, sensor, debug):
+def process_optical(settings, sensor, debug=False):
     """Process optical satellite data to an ARD format.
     The module 'force-level2' will be executed inside the FORCE Singularity container.
     _mod_force_template_prm() is used to create a modified and timestamped copy of the template parameter file
-    /settings/force/FORCE_params__template.prm , which is passed to the container to start the processing.
+    /settings/force/FORCE_params__template.prm, which is passed to the container to start the processing.
 
     Parameters
     ----------
@@ -125,8 +125,8 @@ def process_optical(settings, sensor, debug):
         containing level-1 data for this sensor already exist in /{DataDirectory}/level1/{sensor} .
         Valid options are defined in SAT_DICT.keys().
         Example: 'landsat8'
-    debug: boolean
-        Singularity debugging information is printed if set to True.
+    debug: boolean (optional)
+        Optional parameter to print Singularity debugging information.
     """
 
     Client.debug = debug
@@ -178,8 +178,8 @@ def _collect_params(settings):
 
 def _mod_force_template_prm(settings, sensor):
     """Helper function for process_optical(). The template parameter file used for the 'force-level2' module of FORCE
-    will be filled with parameters defined in the ['PROCESSING'] section of 'settings.prm'.
-    Instead of overwriting the template, a modified and timestamped copy will be saved."""
+    will be filled with parameters defined in the ['PROCESSING'] section of 'settings.prm'. Instead of overwriting the
+    template, a modified and timestamped copy will be saved."""
 
     ## Get path to default parameter file and get all lines as a list
     prm_path = os.path.join(ROOT_DIR, 'settings', 'force', 'FORCE_params__template.prm')
@@ -235,8 +235,8 @@ def _mod_force_template_prm(settings, sensor):
 
 def _check_force_file_queue(prm_path):
     """Helper function for process_optical() to check how many scenes will be processed based on the file queue (a text
-    file automatically created by FORCE during data download). The function also asks for user confirmation and returns
-    a boolean, which is used in process_optical() to start or cancel the processing."""
+    file automatically created by FORCE during data download). The function also asks for user confirmation and passes
+    a boolean back to process_optical() to then start or cancel the processing."""
 
     ## Read parameter file and get all lines as a list
     with open(prm_path, 'r') as file:
@@ -285,19 +285,18 @@ def _crop_by_aoi(settings, directory_src, directory_dst):
     log_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'log')
     utils.isdir_mkdir(log_dir)
     log_file = os.path.join(log_dir,
-                            f"{datetime.now().strftime('%Y%m%dT%H%M%S__crop_by_aoi')}.log")
+                            f"{datetime.now().strftime('%Y%m%dT%H%M%S__sentinel1__generate_ard')}.log")
 
-    ## Create file list
     file_list = []
     for file in glob.iglob(os.path.join(directory_src, '**/*.tif'), recursive=True):
         file_list.append(file)
 
-    ## Get CRS from first file. All other files are assumed to be in the same CRS
+    ## Get CRS from first file. All other files of the dataset are assumed to be in the same CRS
     with rasterio.open(file_list[0]) as raster:
         dst_crs = raster.crs
 
     ## Get AOI path and reprojected features
-    aoi_path = utils.get_aoi_path(settings)
+    aoi_path = utils.get_aoi_path(settings=settings)
     features = _get_aoi_features(aoi_path=aoi_path, crs=dst_crs)
 
     ## Set multiprocessing pool
@@ -305,8 +304,7 @@ def _crop_by_aoi(settings, directory_src, directory_dst):
     pool = mp.Pool(nproc)
 
     ## Apply function _do_crop() to each file
-    ## TODO: Somehow implement progress bar or something else?
-    result_objects = [pool.apply_async(_do_crop, args=(file, features, directory_dst)) for file in file_list]
+    result_objects = [pool.apply_async(_do_crop, args=(file, features, directory_dst, clean)) for file in file_list]
     results = [f"{r.get()[0]} - {r.get()[1]}" for r in result_objects]
 
     pool.close()
@@ -329,13 +327,7 @@ def _do_crop(file, features, directory_dst):
     directory_dst: str
         Destination directory
 
-    Returns
-    -------
-    tuple
-        Contains information for logging including the file path and a result/error message
-    """
-
-    ## TODO: Rewrite this without writing to a temporary file (?)
+    ## TODO: Rewrite this without writing to a temporary file?
     ## Getting the data window and cropping the output file works without writing to a
     ## temporary file first, but I had some problems with getting the transform right.
     ## It works pretty well as is (especially with multiprocessing), so I'll just leave it for now.
@@ -391,7 +383,8 @@ def _do_crop(file, features, directory_dst):
 
 
 def _get_aoi_features(aoi_path, crs):
-    """Helper function to get AOI geometry features in an appropriate format for rasterio.mask.mask in _do_crop()."""
+    """Helper function for _crop_by_aoi()/_do_crop() to get AOI geometry features into an appropriate format for
+    rasterio.mask.mask."""
 
     aoi = gpd.read_file(aoi_path)
 

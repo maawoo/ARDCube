@@ -17,7 +17,7 @@ def prepare_odc(sensor, overwrite=True):
     file_dict = create_file_dict(sensor=sensor,
                                  overwrite=overwrite)
 
-    print(f"\n#### Creating EO3 YAML files for {len(file_dict)} {sensor} files.")
+    print(f"\n#### Creating ODC YAML files for {len(file_dict)} {sensor} files.")
 
     ## Create metadata YAML files in EO3 format
     create_eo3_yaml(sensor=sensor,
@@ -135,19 +135,13 @@ def create_eo3_yaml(sensor, file_dict):
 
 
 def _create_identity_string(file_path):
-    """Creates an identity string for a given file based on its tile ID and date string."""
+    """Helper function for create_file_dict() to create an identifiable string for a given file based on its tile ID and
+    date of recording."""
 
-    ## Get date string from filename
     date = _get_date_string(file_path=file_path)
+    tile_id = os.path.basename(os.path.dirname(file_path))
 
-    ## Get tile ID from directory name (FORCE directory structure is assumed!)
-    f_dir = os.path.dirname(file_path)
-    tile_id = os.path.basename(f_dir)
-
-    ## Create identity string
-    identity = f'{tile_id}__{date}'
-
-    return identity
+    return f"{tile_id}__{date}"
 
 
 def _update_file_dict(level2_dir, file_dict):
@@ -188,7 +182,7 @@ def _update_file_dict(level2_dir, file_dict):
 
 
 def _get_date_string(file_path, sensor=None, do_format=False):
-    """Extracts the date string from a file name."""
+    """Helper function to extract the date from a file name."""
 
     f_base = os.path.basename(file_path)
 
@@ -210,26 +204,26 @@ def _format_date_string(date, sensor):
 
     if len(date) == 8:
         if sensor.startswith('landsat'):
-            date = datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%dT10:00:00.000Z')
+            date = datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%dT10:00:00.000Z')  # Landsat
         else:
-            date = datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%dT10:30:00.000Z')
+            date = datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%dT10:30:00.000Z')  # Sentinel-2
     elif len(date) == 15:
-        date = datetime.strptime(date, '%Y%m%dT%H%M%S').strftime('%Y-%m-%dT%H:%M:%S.000Z')
+        date = datetime.strptime(date, '%Y%m%dT%H%M%S').strftime('%Y-%m-%dT%H:%M:%S.000Z')  # Sentinel-1
     else:
-        raise RuntimeError('Length of date string is expected to be of length 8 or 15 based on existing file naming '
-                           'conventions.')
+        raise RuntimeError("Length of date string is expected to be of length 8 or 15 based on existing file naming "
+                           "conventions.")
 
     return date
 
 
 def _read_product_yaml(sensor):
-    """Returns information from Product YAML as a dictionary."""
+    """Helper function to return ODC Product YAML information as a dictionary."""
 
     if sensor == 'sentinel1':
-        product_path = [os.path.join(ROOT_DIR, 'settings/odc', f"{sensor}_asc.yaml"),
-                        os.path.join(ROOT_DIR, 'settings/odc', f"{sensor}_desc.yaml")]
+        product_path = [os.path.join(ROOT_DIR, 'settings', 'odc',  f"{sensor}_asc.yaml"),
+                        os.path.join(ROOT_DIR, 'settings', 'odc', f"{sensor}_desc.yaml")]
     else:
-        product_path = [os.path.join(ROOT_DIR, 'settings/odc', f"{sensor}.yaml")]
+        product_path = [os.path.join(ROOT_DIR, 'settings', 'odc', f"{sensor}.yaml")]
 
     dict_out = {}
     for path in product_path:
@@ -247,7 +241,7 @@ def _read_product_yaml(sensor):
 
 
 def _s1_is_asc_or_desc(file_path):
-    """..."""
+    """Helper function to get information on SAR orbit from file name based on pyroSAR's naming convention."""
 
     file = os.path.basename(file_path)
 
@@ -260,7 +254,7 @@ def _s1_is_asc_or_desc(file_path):
 
 
 def _get_grid_info(file_path):
-    """Get shape and transform information for a raster file."""
+    """Helper function to get shape and transform information from a raster file."""
 
     with rasterio.open(file_path) as src:
         shape = list(src.shape)
@@ -336,7 +330,7 @@ def _get_metadata(sensor, file_path):
 
 
 def _format_yaml_name(sensor, file_path):
-    """..."""
+    """Helper function to format output YAML name depending on sensor."""
 
     if sensor == 'sentinel1':
         return f"{os.path.splitext(os.path.basename(file_path))[0][:27]}.yaml"

@@ -32,7 +32,7 @@ def get_aoi_path(settings):
     if len(aoi_field) == 0:
         raise RuntimeError("Field 'AOI': Input missing!")
 
-    ## Field can be filename (assumed to be in the /misc/aoi subdirectory of DataDirectory) or full path
+    ## Field can be filename (assumed to be located in the directory /{DataDirectory}/misc/aoi ) or full path
     if not os.path.isfile(aoi_field):
         aoi_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'aoi', aoi_field)
     else:
@@ -58,11 +58,11 @@ def get_dem_path(settings):
         if dem_field in DEM_TYPES:
             dem_path, dem_nodata = create_dem(settings=settings, dem_type=dem_field)
         else:
-            ## Input -> Filename (and the crystal ball says it's located in the /misc/dem subdirectory of DataDirectory)
+            ## Input -> Filename of a DEM that is assumed to be located in the directory  /{DataDirectory}/misc/dem
             dem_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'dem', dem_field)
             dem_nodata = settings['PROCESSING']['DEM_NoData']
     else:
-        ## Input -> Full path to an existing file
+        ## Input -> Path to an existing DEM file
         dem_path = dem_field
         dem_nodata = settings['PROCESSING']['DEM_NoData']
 
@@ -151,8 +151,6 @@ def isdir_mkdir(directory):
         for d in directory:
             if not os.path.isdir(d):
                 os.mkdir(d)
-    else:
-        raise TypeError("Input must be a single PathLike[str] or a list thereof.")
 
 
 def progress(count, total, status=''):

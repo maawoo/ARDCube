@@ -5,9 +5,11 @@
 # that was provided in the settings.prm file.
 # This template file will not be overwritten. Instead, a timestamped copy will be saved in a subdirectory called
 # 'history' including all modifications by ARDCube scripts.
-# You can adjust parameters not marked with 'FILL' as you wish and refer to the file FORCE_params__description.prm and
+# You can adjust parameters as you wish and refer to the file FORCE_params__description.prm and
 # the FORCE documentation for a detailed description of all parameters, as well as best practices.
 # https://force-eo.readthedocs.io/en/latest/howto/l2-ard.html#tut-ard
+# Parameters of the settings.prm file will be ignored if their equivalent parameter (marked as 'FILL') is adjusted
+# in this file.
 
 # May the FORCE be with you!
 
@@ -26,7 +28,7 @@ DEM_NODATA = FILL
 
 # DATA CUBES
 # Note that ORIGIN_LAT, ORIGIN_LON, TILE_SIZE, and BLOCK_SIZE will be ignored if GLANCE7
-# or EQUI7 are chosen for PROJECTION, as they use predefined values.  
+# or EQUI7 are chosen for PROJECTION, as they use predefined values!
 # https://force-eo.readthedocs.io/en/latest/howto/datacube.html#how-to-define-the-datacube-parameters
 # ------------------------------------------------------------------------
 DO_REPROJ = TRUE

@@ -193,7 +193,7 @@ def _collect_query(settings, sensor):
         query['cloudcover'] = f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMin']}," \
                               f"{settings['DOWNLOAD']['OpticalCloudCoverRangeMax']}"
         query['queue_file'] = os.path.join(out_dir, 'queue.txt')
-        query['meta_dir'] = os.path.join(data_dir, 'meta/catalogues')
+        query['meta_dir'] = os.path.join(data_dir, 'meta', 'catalogues')
 
     return query
 

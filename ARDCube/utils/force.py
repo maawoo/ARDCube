@@ -11,7 +11,7 @@ import fiona
 
 
 def download_catalogues(directory):
-    """Download metadata catalogues necessary for downloading via FORCE if user confirms."""
+    """Download metadata catalogues necessary for the force-level1-csd module of FORCE."""
 
     while True:
         answer = input(f"\nTo download datasets via FORCE, it is necessary to have "
@@ -20,7 +20,7 @@ def download_catalogues(directory):
                        f"Do you want to download the latest catalogues into {directory}? (y/n)")
 
         if answer in ['y', 'yes']:
-            print("\n#### Starting download...")
+            print("\n#### Starting download of metadata catalogues...")
             utils.isdir_mkdir(directory)
 
             out = Client.execute(FORCE_PATH, ["force-level1-csd", "-u", directory],
@@ -72,6 +72,8 @@ def create_mosaics(directory):
 def cube_dataset(directory, prj_file=None, resample='bilinear', resolution=20):
     """..."""
 
+    ##TODO: Fallback datacube.prj file in /settings/pyrosar !
+
     ## No path provided = A datacube-definition file is assumed to exist in the output directory (manually copied)
     ## Full path provided = Existing datacube-definition file will be copied to output directory
     if prj_file is None:
@@ -96,6 +98,7 @@ def cube_dataset(directory, prj_file=None, resample='bilinear', resolution=20):
             utils.progress(i, total, status=f"Running force-cube on {total} files")
             Client.execute(FORCE_PATH, ["force-cube", file, directory, resample, str(resolution)],
                            options=["--cleanenv"])
+
             os.remove(file)
 
 
