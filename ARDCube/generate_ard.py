@@ -14,7 +14,7 @@ import rasterio.mask
 from rasterio.windows import get_data_window
 
 
-def generate_ard(sensor, debug=False):
+def generate_ard(sensor, debug=False, clean=False):
     """Main function of this module. Will either run process_sar() or process_optical(), depending on chosen sensor.
 
     Parameters
@@ -25,6 +25,8 @@ def generate_ard(sensor, debug=False):
         Example: 'landsat8'
     debug: boolean (optional)
         Optional parameter to print Singularity debugging information.
+    clean: boolean (optional)
+        Optional parameter to automatically delete intermediate files. Only passed to process_sar()!
     """
 
     settings = utils.get_settings()
@@ -40,14 +42,15 @@ def generate_ard(sensor, debug=False):
     print(f"#### Start processing of {sensor} data...")
     if sensor == 'sentinel1':
         process_sar(settings=settings,
-                    debug=debug)
+                    debug=debug,
+                    clean=clean)
     else:
         process_optical(settings=settings,
                         sensor=sensor,
                         debug=debug)
 
 
-def process_sar(settings, debug):
+def process_sar(settings, debug=False, clean=False):
     """Process SAR satellite data to an ARD format.
     First, radiometrically terrain-corrected gamma nought backscatter is produced via the pyroSAR Singularity container.
     This is achieved by executing the script /settings/pyrosar/snap.py inside the container and passing all necessary
@@ -61,8 +64,11 @@ def process_sar(settings, debug):
     ----------
     settings: ConfigParser object
         A dictionary-like object created by ARDCube.utils.get_settings
-    debug: boolean
-        Singularity debugging information is printed if set to True.
+    debug: boolean (optional)
+        Optional parameter to print Singularity debugging information.
+    clean: boolean (optional)
+        If True, _crop_by_aoi() will delete each source GeoTIFF after cropping automatically and remove the empty
+        intermediate directory ('sentinel1_pyrosar') afterwards as well.
     """
 
     Client.debug = debug
@@ -98,7 +104,7 @@ def process_sar(settings, debug):
             continue
 
     print("\n#### Cropping rasters to AOI...")
-    _crop_by_aoi(settings=settings, directory_src=p['out_dir_tmp'], directory_dst=p['out_dir'])
+    _crop_by_aoi(settings=settings, directory_src=p['out_dir_tmp'], directory_dst=p['out_dir'], clean=clean)
 
     print("\n#### Reprojecting rasters and creating non-overlapping tiles...")
     force.cube_dataset(directory=p['out_dir'])
@@ -278,10 +284,10 @@ def _check_force_file_queue(prm_path):
             continue
 
 
-def _crop_by_aoi(settings, directory_src, directory_dst):
-    """..."""
+def _crop_by_aoi(settings, directory_src, directory_dst, clean):
+    """Helper function for process_sar() to crop SAR scenes to the AOI. Sets up a multiprocessing pool and calls the
+    helper function _do_crop() with Pool.apply_async()."""
 
-    ## Define log file
     log_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'log')
     utils.isdir_mkdir(log_dir)
     log_file = os.path.join(log_dir,
@@ -314,18 +320,15 @@ def _crop_by_aoi(settings, directory_src, directory_dst):
         for item in results:
             f.write("%s\n" % item)
 
+    if clean:
+        os.removedirs(directory_src)
+    ## TODO: I need to know which files exactly are left after intermediate GeoTIFF files are removed.
+    ## Any metadata files need to be moved to the metadata directory anyway, as otherwise the next step (force.cube)
+    ## will have problems!
 
-def _do_crop(file, features, directory_dst):
-    """Helper function executed in _crop_by_aoi() which does the actual cropping per file.
 
-    Parameters
-    ----------
-    file: str
-        Path to the file that will be cropped
-    features: list of str
-        List of geometry features from AOI that will be used for cropping.
-    directory_dst: str
-        Destination directory
+def _do_crop(file, features, directory_dst, clean):
+    """Helper function executed in _crop_by_aoi() which does the actual cropping per file."""
 
     ## TODO: Rewrite this without writing to a temporary file?
     ## Getting the data window and cropping the output file works without writing to a
@@ -379,7 +382,10 @@ def _do_crop(file, features, directory_dst):
         except ValueError:
             result = "fail 1: Raster completely outside AOI"
 
-    return (file, result)
+    if clean:
+        os.remove(file)
+
+    return (file, result)  # Logging information
 
 
 def _get_aoi_features(aoi_path, crs):
