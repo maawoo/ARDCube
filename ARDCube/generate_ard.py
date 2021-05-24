@@ -182,108 +182,6 @@ def _collect_params(settings):
     }
 
 
-def _mod_force_template_prm(settings, sensor):
-    """Helper function for process_optical(). The template parameter file used for the 'force-level2' module of FORCE
-    will be filled with parameters defined in the ['PROCESSING'] section of 'settings.prm'. Instead of overwriting the
-    template, a modified and timestamped copy will be saved."""
-
-    ## Get path to default parameter file and get all lines as a list
-    prm_path = os.path.join(ROOT_DIR, 'settings', 'force', 'FORCE_params__template.prm')
-    if not os.path.isfile(prm_path):
-        raise FileNotFoundError(f"{prm_path} could not be found.")
-
-    with open(prm_path, 'r') as file:
-        prm_lines = file.readlines()
-
-    ## Get all necessary information to fill parameters that are not pre-defined
-    data_dir = settings['GENERAL']['DataDirectory']
-    file_queue = os.path.join(data_dir, 'level1', sensor, 'queue.txt')
-    dir_level2 = os.path.join(data_dir, 'level2', sensor)
-    dir_log = os.path.join(data_dir, 'log', sensor)
-    dir_tmp = os.path.join(data_dir, 'temp')
-    file_dem, dem_nodata = utils.get_dem_path(settings=settings)
-    nproc = settings['PROCESSING']['NPROC']
-    nthread = settings['PROCESSING']['NTHREAD']
-
-    ## Create these directories (if necessary) before running FORCE
-    utils.isdir_mkdir(directory=[dir_level2, dir_log, dir_tmp])
-
-    ## Parameter fields that need to be changed (parameters) and the content that will be used (values)
-    parameters = ['FILE_QUEUE', 'DIR_LEVEL2', 'DIR_LOG', 'DIR_TEMP', 'FILE_DEM', 'DEM_NODATA', 'NPROC', 'NTHREAD']
-    values = [file_queue, dir_level2, dir_log, dir_tmp, file_dem, dem_nodata, nproc, nthread]
-
-    ## Search for parameters in the list of lines and return the index
-    indexes = []
-    for p in parameters:
-        ind = [i for i, item in enumerate(prm_lines) if item.startswith(p)]
-        if len(ind) != 1:
-            raise IndexError(f"The field '{p}' was found more than once in FORCE_params__template.prm, which "
-                             f"should not be the case!")
-        else:
-            indexes.append(ind[0])
-
-    ## Change parameter fields at selected indexes
-    for p, v, i in zip(parameters, values, indexes):
-        prm_lines[i] = f"{p} = {v}\n"
-
-    ## Define new output directory and create it if necessary
-    prm_dir_new = os.path.join(ROOT_DIR, 'settings', 'force', 'history')
-    utils.isdir_mkdir(directory=prm_dir_new)
-
-    ## Create copy of FORCE_params__template.prm with adjusted parameter fields and return full path
-    now = datetime.now().strftime('%Y%m%dT%H%M%S')
-    prm_path_new = os.path.join(prm_dir_new, f"FORCE_params__{sensor}_{now}.prm")
-    with open(prm_path_new, 'w') as file:
-        file.writelines(prm_lines)
-
-    return prm_path_new, dir_level2
-
-
-def _check_force_file_queue(prm_path):
-    """Helper function for process_optical() to check how many scenes will be processed based on the file queue (a text
-    file automatically created by FORCE during data download). The function also asks for user confirmation and passes
-    a boolean back to process_optical() to then start or cancel the processing."""
-
-    ## Read parameter file and get all lines as a list
-    with open(prm_path, 'r') as file:
-        lines = file.readlines()
-
-    ## Return index of 'FILE_QUEUE' parameter field
-    ind = [i for i, item in enumerate(lines) if item.startswith('FILE_QUEUE')]
-
-    ## Check if field exists and for duplicate entries, just to be sure...
-    if len(ind) > 1:
-        raise IndexError(f"The field 'FILE_QUEUE' was found more than once in '{prm_path}'")
-    elif len(ind) == 0:
-        raise IndexError(f"The field 'FILE_QUEUE' could not be found in '{prm_path}'")
-
-    ## Extract path from string, check if file exists and read it
-    queue_path = lines[ind[0]].replace('FILE_QUEUE = ', '').replace('\n', '')
-
-    if not os.path.isfile(queue_path):
-        raise FileNotFoundError(f"{queue_path} does not exist.")
-
-    with open(queue_path, 'r') as file:
-        lines_queue = file.readlines()
-
-    ## Count how many entries in queue file are marked as 'DONE' and how many as 'QUEUED'
-    n_done = len([i for i, item in enumerate(lines_queue) if item.endswith('DONE\n')])
-    n_queued = len([i for i, item in enumerate(lines_queue) if item.endswith('QUEUED\n')])
-
-    while True:
-        answer = input(f"\nThe following queue file will be queried by FORCE: \n{queue_path}\n"
-                       f"{n_done} scenes are marked as 'DONE' \n{n_queued} scenes are marked as 'QUEUED'\n"
-                       f"Do you want to proceed with the batch processing of all {n_queued} scenes marked as 'QUEUED'?"
-                       f" (y/n)")
-        if answer in ['y', 'yes']:
-            return True
-        elif answer in ['n', 'no']:
-            return False
-        else:
-            print(f"\n{answer} is not a valid answer!")
-            continue
-
-
 def _crop_by_aoi(settings, directory_src, directory_dst, clean):
     """Helper function for process_sar() to crop SAR scenes to the AOI. Sets up a multiprocessing pool and calls the
     helper function _do_crop() with Pool.apply_async()."""
@@ -409,3 +307,105 @@ def _get_aoi_features(aoi_path, crs):
     os.remove(aoi_tmp_path)
 
     return features
+
+
+def _mod_force_template_prm(settings, sensor):
+    """Helper function for process_optical(). The template parameter file used for the 'force-level2' module of FORCE
+    will be filled with parameters defined in the ['PROCESSING'] section of 'settings.prm'. Instead of overwriting the
+    template, a modified and timestamped copy will be saved."""
+
+    ## Get path to default parameter file and get all lines as a list
+    prm_path = os.path.join(ROOT_DIR, 'settings', 'force', 'FORCE_params__template.prm')
+    if not os.path.isfile(prm_path):
+        raise FileNotFoundError(f"{prm_path} could not be found.")
+
+    with open(prm_path, 'r') as file:
+        prm_lines = file.readlines()
+
+    ## Get all necessary information to fill parameters that are not pre-defined
+    data_dir = settings['GENERAL']['DataDirectory']
+    file_queue = os.path.join(data_dir, 'level1', sensor, 'queue.txt')
+    dir_level2 = os.path.join(data_dir, 'level2', sensor)
+    dir_log = os.path.join(data_dir, 'log', sensor)
+    dir_tmp = os.path.join(data_dir, 'temp')
+    file_dem, dem_nodata = utils.get_dem_path(settings=settings)
+    nproc = settings['PROCESSING']['NPROC']
+    nthread = settings['PROCESSING']['NTHREAD']
+
+    ## Create these directories (if necessary) before running FORCE
+    utils.isdir_mkdir(directory=[dir_level2, dir_log, dir_tmp])
+
+    ## Parameter fields that need to be changed (parameters) and the content that will be used (values)
+    parameters = ['FILE_QUEUE', 'DIR_LEVEL2', 'DIR_LOG', 'DIR_TEMP', 'FILE_DEM', 'DEM_NODATA', 'NPROC', 'NTHREAD']
+    values = [file_queue, dir_level2, dir_log, dir_tmp, file_dem, dem_nodata, nproc, nthread]
+
+    ## Search for parameters in the list of lines and return the index
+    indexes = []
+    for p in parameters:
+        ind = [i for i, item in enumerate(prm_lines) if item.startswith(p)]
+        if len(ind) != 1:
+            raise IndexError(f"The field '{p}' was found more than once in FORCE_params__template.prm, which "
+                             f"should not be the case!")
+        else:
+            indexes.append(ind[0])
+
+    ## Change parameter fields at selected indexes
+    for p, v, i in zip(parameters, values, indexes):
+        prm_lines[i] = f"{p} = {v}\n"
+
+    ## Define new output directory and create it if necessary
+    prm_dir_new = os.path.join(ROOT_DIR, 'settings', 'force', 'history')
+    utils.isdir_mkdir(directory=prm_dir_new)
+
+    ## Create copy of FORCE_params__template.prm with adjusted parameter fields and return full path
+    now = datetime.now().strftime('%Y%m%dT%H%M%S')
+    prm_path_new = os.path.join(prm_dir_new, f"FORCE_params__{sensor}_{now}.prm")
+    with open(prm_path_new, 'w') as file:
+        file.writelines(prm_lines)
+
+    return prm_path_new, dir_level2
+
+
+def _check_force_file_queue(prm_path):
+    """Helper function for process_optical() to check how many scenes will be processed based on the file queue (a text
+    file automatically created by FORCE during data download). The function also asks for user confirmation and passes
+    a boolean back to process_optical() to then start or cancel the processing."""
+
+    ## Read parameter file and get all lines as a list
+    with open(prm_path, 'r') as file:
+        lines = file.readlines()
+
+    ## Return index of 'FILE_QUEUE' parameter field
+    ind = [i for i, item in enumerate(lines) if item.startswith('FILE_QUEUE')]
+
+    ## Check if field exists and for duplicate entries, just to be sure...
+    if len(ind) > 1:
+        raise IndexError(f"The field 'FILE_QUEUE' was found more than once in '{prm_path}'")
+    elif len(ind) == 0:
+        raise IndexError(f"The field 'FILE_QUEUE' could not be found in '{prm_path}'")
+
+    ## Extract path from string, check if file exists and read it
+    queue_path = lines[ind[0]].replace('FILE_QUEUE = ', '').replace('\n', '')
+
+    if not os.path.isfile(queue_path):
+        raise FileNotFoundError(f"{queue_path} does not exist.")
+
+    with open(queue_path, 'r') as file:
+        lines_queue = file.readlines()
+
+    ## Count how many entries in queue file are marked as 'DONE' and how many as 'QUEUED'
+    n_done = len([i for i, item in enumerate(lines_queue) if item.endswith('DONE\n')])
+    n_queued = len([i for i, item in enumerate(lines_queue) if item.endswith('QUEUED\n')])
+
+    while True:
+        answer = input(f"\nThe following queue file will be queried by FORCE: \n{queue_path}\n"
+                       f"{n_done} scenes are marked as 'DONE' \n{n_queued} scenes are marked as 'QUEUED'\n"
+                       f"Do you want to proceed with the batch processing of all {n_queued} scenes marked as 'QUEUED'?"
+                       f" (y/n)")
+        if answer in ['y', 'yes']:
+            return True
+        elif answer in ['n', 'no']:
+            return False
+        else:
+            print(f"\n{answer} is not a valid answer!")
+            continue
