@@ -11,7 +11,7 @@ import fiona
 
 
 def download_catalogues(directory):
-    """Download metadata catalogues necessary for the force-level1-csd module of FORCE."""
+    """Download metadata catalogues necessary for the 'force-level1-csd' module of FORCE."""
 
     while True:
         answer = input(f"\nTo download datasets via FORCE, it is necessary to have "
@@ -36,17 +36,13 @@ def download_catalogues(directory):
             continue
 
 
-def create_kml_grid(directory, aoi_path=None):
-    """..."""
+def create_kml_grid(directory):
+    """Wrapper for 'force-tabulate-grid'."""
 
-    ## Use AOI defined in settings.prm if no other path is provided
-    if aoi_path is None:
-        aoi_path = utils.get_aoi_path(utils.get_settings())
-
-    ## Get directory of datacube-definition.prj
+    aoi_path = utils.get_aoi_path(settings=utils.get_settings())
     prj_dir = _get_datacubeprj_dir(directory)
 
-    ## Get AOI bounds and add a buffer of 0.5°
+    ## Get AOI bounds and add a buffer of 1°
     with fiona.open(aoi_path) as f:
         bottom = f.bounds[1] - 1
         top = f.bounds[3] + 1
@@ -59,7 +55,7 @@ def create_kml_grid(directory, aoi_path=None):
 
 
 def create_mosaics(directory):
-    """..."""
+    """Wrapper for 'force-mosaic'."""
 
     ## Get directory of datacube-definition.prj
     prj_dir = _get_datacubeprj_dir(directory)
@@ -70,7 +66,7 @@ def create_mosaics(directory):
 
 
 def cube_dataset(directory, prj_file=None, resample='bilinear', resolution=20):
-    """..."""
+    """Wrapper for 'force-cube'."""
 
     ##TODO: Fallback datacube.prj file in /settings/pyrosar !
 
