@@ -49,7 +49,6 @@ def create_kml_grid(directory):
         left = f.bounds[0] - 1
         right = f.bounds[2] + 1
 
-    ## Execute FORCE command with Singularity container
     Client.execute(FORCE_PATH, ["force-tabulate-grid", prj_dir, str(bottom), str(top), str(left), str(right), "kml"],
                    options=["--cleanenv"])
 
@@ -57,10 +56,8 @@ def create_kml_grid(directory):
 def create_mosaics(directory):
     """Wrapper for 'force-mosaic'."""
 
-    ## Get directory of datacube-definition.prj
     prj_dir = _get_datacubeprj_dir(directory)
 
-    ## Execute FORCE command with Singularity container
     Client.execute(FORCE_PATH, ["force-mosaic", prj_dir],
                    options=["--cleanenv"])
 

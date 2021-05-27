@@ -6,6 +6,7 @@ from spython.main import Client
 
 
 def start_postgres(debug=False):
+    """Starts the PostgreSQL Singularity container."""
 
     ## https://www.postgresql.org/docs/10/app-pg-ctl.html
     ## https://hub.docker.com/r/postgis/postgis
@@ -39,6 +40,7 @@ def start_postgres(debug=False):
 
 
 def stop_postgres(debug=False):
+    """Stops the PostgreSQL Singularity container."""
 
     Client.debug = debug
     if debug:
@@ -81,8 +83,9 @@ def odc_index_datasets():
 
 
 def _get_port():
+    """Helper function for start_postgres() to get the port defined in datacube.conf"""
 
-    datacube_conf_path = os.path.join(ROOT_DIR, 'settings/odc', 'datacube.conf')
+    datacube_conf_path = os.path.join(ROOT_DIR, 'settings', 'odc', 'datacube.conf')
 
     datacube_conf = configparser.ConfigParser(allow_no_value=True)
     datacube_conf.read(datacube_conf_path)

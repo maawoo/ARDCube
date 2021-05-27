@@ -58,11 +58,12 @@ def get_dem_path(settings):
         if dem_field in DEM_TYPES:
             dem_path, dem_nodata = create_dem(settings=settings, dem_type=dem_field)
         else:
-            ## Input -> Filename of a DEM that is assumed to be located in the directory  /{DataDirectory}/misc/dem
+            ## Input -> Filename of an existing DEM file that is assumed to be located in the directory
+            ## /{DataDirectory}/misc/dem
             dem_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'dem', dem_field)
             dem_nodata = settings['PROCESSING']['DEM_NoData']
     else:
-        ## Input -> Path to an existing DEM file
+        ## Input -> Path to an existing DEM file that is not located in the directory mentioned above
         dem_path = dem_field
         dem_nodata = settings['PROCESSING']['DEM_NoData']
 
@@ -109,7 +110,7 @@ def create_dem(settings, dem_type):
 
 
 def _aoi_wgs84(aoi_path):
-    """Convert AOI to WGS84 if necessary. (Otherwise DEM creation fails)"""
+    """Helper function for create_dem() to convert AOI to WGS84 if necessary. Otherwise DEM creation fails."""
 
     aoi = gpd.read_file(aoi_path)
 
@@ -122,14 +123,14 @@ def _aoi_wgs84(aoi_path):
             aoi.to_crs(4326).to_file(filename=out_path, driver=_get_driver(suffix))
         else:
             pass
-
         return out_path
+
     else:
         return aoi_path
 
 
 def _get_driver(suffix):
-    """Return OGR format driver based on file suffix."""
+    """Helper function for _aoi_wgs84() to return OGR format driver based on file suffix."""
 
     if suffix == ".shp":
         return "ESRI Shapefile"
