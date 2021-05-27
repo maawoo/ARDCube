@@ -14,10 +14,10 @@ import rasterio
 def prepare_odc(sensor, overwrite=True):
     """Main function of this module, which creates 'Dataset Documents' to index each GeoTIFF file of a given dataset
     into an Open Data Cube (ODC) instance. The documents are saved alongside each source file and stored in the YAML
-    format. More information can be found here:
+    format and in the ODC EO3 schema. More information can be found here:
     https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html
-    Note that a 'Product Definition' file needs to be created beforehand and is expected to be located in the
-    /settings/odc directory.
+    Note that a 'Product Definition' file for the dataset needs to be created beforehand and is expected to be located
+    in the /settings/odc directory.
 
     Parameters
     ----------
@@ -38,8 +38,8 @@ def prepare_odc(sensor, overwrite=True):
 
 def create_file_dict(sensor, overwrite):
     """Recursively searches a level-2 directory for GeoTIFF files and creates a dictionary of the form
-    {'tileID__date': ['path_to_band_1', 'path_to_band_2']}. If bands are not stored separately (e.g., Sentinel-1 VV and VH
-    bands)."""
+    {'tileID__date': ['path_to_VV_band', 'path_to_VH_band']}. If bands are not stored separately, which is the case for
+    optical data processed with FORCE, the list only contains a single path to the multiband GeoTIFF."""
 
     settings = get_settings()
     level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', sensor)
@@ -56,7 +56,8 @@ def create_file_dict(sensor, overwrite):
     file_dict = {}
     for file in glob.iglob(os.path.join(level2_dir, f_pattern), recursive=True):
 
-        ## Skip files that are very small (< 0.5 MB) because some of these are probably not valid.
+        ## Skip files that are very small as they probably only contain no data values and are therefore not valid.
+        ## This bug has been observed for Sentinel-1 data after tiling it using 'force-cube'.
         ## The log file can be used to check which files were skipped. If you notice that any valid files have been
         ## skipped as well, you can adjust the threshold here and run prepare_odc() again with overwrite=False.
         ## This will create YAML files for any files that were skipped previously.
@@ -88,30 +89,26 @@ def create_file_dict(sensor, overwrite):
 def create_eo3_yaml(sensor, file_dict):
     """Creates a YAML file in the EO3 schema for each entry of the provided file dictionary."""
 
-    ## Get information from Product Definition file
     product_dict = _read_product_yaml(sensor=sensor)
 
     for key in list(file_dict.keys()):
 
         file_dict_entry = file_dict[key]
-        file_path = file_dict[key][0]
 
         if sensor == 'sentinel1':
-            orbit = _s1_is_asc_or_desc(file_path=file_path)
+            orbit = _s1_is_asc_or_desc(file_path=file_dict_entry[0])
             prod_key = f"{sensor}_{orbit}.yaml"
         else:
             prod_key = f"{sensor}.yaml"
 
-        shape, transform, crs_wkt = _get_grid_info(file_path=file_path)
-        measurements = _get_measurements(sensor=sensor,
-                                         file_dict_entry=file_dict_entry,
+        shape, transform, crs_wkt = _get_grid_info(file_path=file_dict_entry[0])
+        measurements = _get_measurements(sensor=sensor, file_dict_entry=file_dict_entry,
                                          band_names=product_dict[prod_key]['band_names'])
-        properties = _get_properties(sensor=sensor,
-                                     file_path=file_path)
+        properties = _get_properties(sensor=sensor, file_path=file_dict_entry[0])
 
         if product_dict[prod_key]['crs'] != crs_wkt:
             raise RuntimeError(f"The CRS specified in the product YAML {product_dict[prod_key]['name']} "
-                               f"does not match the CRS of {file_path}")
+                               f"does not match the CRS of {file_dict_entry[0]}")
 
         yaml_content = {
             'id': str(uuid.uuid4()),
@@ -125,8 +122,8 @@ def create_eo3_yaml(sensor, file_dict):
             'properties': properties
         }
 
-        yaml_dir = os.path.dirname(file_path)
-        yaml_name = _format_yaml_name(sensor=sensor, file_path=file_path)
+        yaml_dir = os.path.dirname(file_dict_entry[0])
+        yaml_name = _format_yaml_name(sensor=sensor, file_path=file_dict_entry[0])
 
         with open(os.path.join(yaml_dir, yaml_name), 'w') as stream:
             yaml.safe_dump(yaml_content, stream, sort_keys=False)
@@ -143,7 +140,7 @@ def _create_identity_string(file_path):
 
 
 def _update_file_dict(level2_dir, file_dict):
-    """ Helper function for create_file_dict(). Recursively searches for existing YAML files in the given directory.
+    """Helper function for create_file_dict(). Recursively searches for existing YAML files in the given directory.
     If YAML files are found, file_dict will be filtered for entries that do not have an associated YAML file already."""
 
     ## Search for existing YAML-files in the file directory and use same identification as in create_file_dict()
@@ -201,7 +198,7 @@ def _format_date_string(date, sensor):
 
 
 def _read_product_yaml(sensor):
-    """Helper function to return information from Product Definition YAML."""
+    """Helper function for create_eo3_yaml() to return information from Product Definition YAML."""
 
     if sensor == 'sentinel1':
         product_path = [os.path.join(ROOT_DIR, 'settings', 'odc',  f"{sensor}_asc.yaml"),
@@ -225,7 +222,8 @@ def _read_product_yaml(sensor):
 
 
 def _s1_is_asc_or_desc(file_path):
-    """Helper function to get information on SAR orbit from filename based on pyroSAR's naming convention."""
+    """Helper function for create_eo3_yaml() to get information on SAR orbit from filename based on pyroSAR's naming
+    convention."""
 
     file = os.path.basename(file_path)
 
@@ -238,7 +236,7 @@ def _s1_is_asc_or_desc(file_path):
 
 
 def _get_grid_info(file_path):
-    """Helper function to get necessary shape and transform information from a raster file."""
+    """Helper function for create_eo3_yaml() to get necessary shape and transform information from a raster file."""
 
     with rasterio.open(file_path) as src:
         shape = list(src.shape)
@@ -249,14 +247,10 @@ def _get_grid_info(file_path):
 
 
 def _get_measurements(sensor, file_dict_entry, band_names):
-    """Creates a dictionary that can be used as direct input for the measurement section of an EO3 YAML file.
-
-    :param file_dict_entry: Either ['path/to/multiband.tif'] or ['path/to/band_1.tif', 'path/to/band_2.tif', ...]
-    :param band_names: List of band names
-
-    :return: Dictionary of the form
-        {'VH': {'path': vh.tif},
-        'VV': {'path': vv.tif}}
+    """Helper function for create_eo3_yaml() to create a dictionary for the measurement section of the Dataset
+    Document. The dictionary has the following form depending on SAR or optical dataset:
+        {'VH': {'path': vh_band.tif},
+        'VV': {'path': vv_band.tif}}
         or
         {'blue': {'path': multi_band.tif, 'band': 1},
          'green': {'path': multi_band.tif, 'band': 2},
@@ -286,22 +280,9 @@ def _get_measurements(sensor, file_dict_entry, band_names):
 
 
 def _get_properties(sensor, file_path):
-    """Creates a dictionary that can be used as direct input for the properties section of an EO3 YAML file.
-
-    ODC currently uses the EO3 format for the YAML files, which is supposed to be an intermediate format before moving
-    on to STAC. The 'properties' section in the YAML, which is filled with the dictionary created in this function,
-    already uses STAC standard names. For more information see:
-    https://datacube-core.readthedocs.io/en/latest/ops/dataset_documents.html
-    https://github.com/radiantearth/stac-spec/tree/master/item-spec
-    https://github.com/radiantearth/stac-spec/tree/master/extensions/sar (other extensions in parent directory!)
-
-    Timestamp is the only compulsory field. Other useful metadata can/should be added later on.
-
-    :param sensor:
-    :param file_path:
-
-    :return: Dictionary with entries for each metadata field.
-    """
+    """Helper function for create_eo3_yaml() to create a dictionary for the properties section of the Dataset Document.
+    Datetime is the only compulsory field and orbit state is used to create two separate datasets for ascending and
+    descending Sentinel-1 orbit. Other useful properties can be added later on if needed."""
 
     date = _get_date_string(file_path=file_path, sensor=sensor, do_format=True)
 
@@ -314,7 +295,7 @@ def _get_properties(sensor, file_path):
 
 
 def _format_yaml_name(sensor, file_path):
-    """Helper function to format output YAML name depending on sensor."""
+    """Helper function for create_eo3_yaml() to format output YAML name depending on sensor."""
 
     if sensor == 'sentinel1':
         return f"{os.path.splitext(os.path.basename(file_path))[0][:27]}.yaml"
