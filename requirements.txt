@@ -1,0 +1,8 @@
+sentinelsat
+spython
+datacube==1.8.3
+rasterio
+fiona
+shapely
+geopandas
+pyyaml
