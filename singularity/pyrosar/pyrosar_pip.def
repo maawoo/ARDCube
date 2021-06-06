@@ -83,7 +83,8 @@ From: ubuntu:18.04
         && apt-get clean -y
 
     ## Install pyroSAR
-    python3 -m pip install git+https://github.com/johntruckenbrodt/pyroSAR.git
+    pip3 install "numpy == 1.19.0"
+    pip3 install git+https://github.com/johntruckenbrodt/pyroSAR.git
 
     ## General cleanup
     apt-get -y autoremove --purge
