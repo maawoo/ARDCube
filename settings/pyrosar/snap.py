@@ -36,7 +36,7 @@ for scene in list_scenes:
                  removeS1BorderNoiseMethod='pyroSAR', removeS1ThermalNoise=True, offset=None, allow_RES_OSV=False,
                  externalDEMFile=dem_path, externalDEMNoDataValue=dem_nodata, externalDEMApplyEGM=True,
                  terrainFlattening=True, basename_extensions=None, test=False, export_extra=None, groupsize=1,
-                 cleanup=False, tmpdir=None, gpt_exceptions=None, gpt_args=None, returnWF=False, nodataValueAtSea=True,
+                 cleanup=True, tmpdir=None, gpt_exceptions=None, gpt_args=None, returnWF=False, nodataValueAtSea=True,
                  demResamplingMethod='BILINEAR_INTERPOLATION', imgResamplingMethod='BILINEAR_INTERPOLATION',
                  alignToStandardGrid=False, standardGridOriginX=0, standardGridOriginY=0,
                  speckleFilter=speckle, refarea=refarea)
