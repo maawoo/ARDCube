@@ -74,10 +74,11 @@ From: ubuntu:18.04
 
     echo -e "######################### \nInstalling Conda & pyroSAR \n#########################"
 
-    ## Install GDAL
     apt-get install -y \
         python-gdal \
         python3-gdal \
+        python3-dev \
+        libpq-dev \
         gdal-bin \
         && apt-get autoremove -y \
         && apt-get clean -y
@@ -102,7 +103,12 @@ From: ubuntu:18.04
     conda config --system --set auto_update_conda false
 
     ## Install pyroSAR
+    ## Either the most recent version from conda or...
     conda install -y --channel conda-forge pyroSAR
+
+    ## the master branch from the Github repo
+    # conda install pip git
+    # pip install git+https://github.com/johntruckenbrodt/pyroSAR.git
 
 
     ## General cleanup
