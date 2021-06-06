@@ -2,10 +2,10 @@ Bootstrap: docker
 From: ubuntu:18.04
 
 
-%files 
+%files
     ## Copy local files that are needed for %post (aka build) section
-    ## At a minimum a response.varfile for the SNAP installation should be provided. 
-    ## Install scripts for SNAP 8.0 and the latest Miniconda version can be provided as well. They will be downloaded using wget if not provided. 
+    ## At a minimum a response.varfile for the SNAP installation should be provided.
+    ## Install scripts for SNAP 8.0 and the latest Miniconda version can be provided as well. They will be downloaded using wget if not provided.
     ./files /
 
 
@@ -13,7 +13,7 @@ From: ubuntu:18.04
 
     ## Upgrade all software packages to their latest versions
     apt-get -y update && apt-get -y upgrade
-    
+
     ## Install some general packages
     apt-get install -y --no-install-recommends --no-install-suggests \
         build-essential \
@@ -23,7 +23,7 @@ From: ubuntu:18.04
         && apt-get autoremove -y \
         && apt-get clean -y
 
-    ## Set locale 
+    ## Set locale
     locale-gen en_US.UTF-8
     export LANG=en_US.UTF-8
     export LANGUAGE=en_US:en
@@ -36,8 +36,6 @@ From: ubuntu:18.04
 
     ## Only used to check if files were downloaded already and copied over. If not, they will be downloaded using wget.
     export SNAP_FILE=$INSTALL_DIR/esa-snap_sentinel_unix_8_0.sh
-    export MINICONDA_FILE=$INSTALL_DIR/Miniconda3-latest-Linux-x86_64.sh
-
 
     echo -e "######################### \nInstalling SNAP \n#########################"
 
@@ -52,7 +50,7 @@ From: ubuntu:18.04
 
     ## Install Java
     apt-get install default-jdk maven -y
-    export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64/" 
+    export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64/"
 
     ## Run install script and download first if necessary (install parameters in response.varfile!)
     if [ -f $SNAP_FILE ]; then
@@ -65,54 +63,29 @@ From: ubuntu:18.04
         bash $SNAP_FILE -q -varfile $INSTALL_DIR/response.varfile
     fi
 
-    ## Current workaround for "commands hang after they are actually executed":  
+    ## Current workaround for "commands hang after they are actually executed":
     /opt/snap/bin/snap --nosplash --nogui --modules --update-all 2>&1 | while read -r line; do
         echo "$line"
         [ "$line" = "updates=0" ] && sleep 2 && pkill -TERM -f "snap/jre/bin/java"
     done
 
 
-    echo -e "######################### \nInstalling Conda & pyroSAR \n#########################"
+    echo -e "######################### \nInstalling pyroSAR \n#########################"
 
     apt-get install -y \
-        python-gdal \
-        python3-gdal \
         python3-dev \
-        libpq-dev \
+        python3-pip \
+        git \
+        python3-gdal \
         gdal-bin \
+        libpq-dev \
         && apt-get autoremove -y \
         && apt-get clean -y
 
-    ## Download latest Miniconda and run install script
-    if [ -f $MINICONDA_FILE ]; then
-        echo "'$MINICONDA_FILE' exists. "
-        bash $MINICONDA_FILE -bfp /opt/miniconda3
-    else
-        echo "The file '$MINICONDA_FILE' does not exist. Proceed to download from https://repo.anaconda.com/miniconda..."
-        wget -q -O $MINICONDA_FILE \
-            "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
-        bash $MINICONDA_FILE -bfp /opt/miniconda3
-    fi
-
-    ## Add to PATH variable
-    export PATH="/opt/miniconda3/bin:$PATH"
-
-    ## Update / Configs
-    conda update -y -n base conda
-    conda config --system --prepend channels conda-forge
-    conda config --system --set auto_update_conda false
-
     ## Install pyroSAR
-    ## Either the most recent version from conda or...
-    conda install -y --channel conda-forge pyroSAR
-
-    ## the master branch from the Github repo
-    # conda install pip git
-    # pip install git+https://github.com/johntruckenbrodt/pyroSAR.git
-
+    python3 -m pip install git+https://github.com/johntruckenbrodt/pyroSAR.git
 
     ## General cleanup
-    conda clean -y --all
     apt-get -y autoremove --purge
     apt-get -y clean
     rm -rf /src
@@ -121,4 +94,3 @@ From: ubuntu:18.04
 %environment
     export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64/"
     export LD_LIBRARY_PATH=".:$LD_LIBRARY_PATH"  # not sure if needed after installation
-    export PATH="/opt/miniconda3/bin:/opt/snap/bin:$PATH"
