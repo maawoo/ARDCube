@@ -1,5 +1,5 @@
 from ARDCube.config import ROOT_DIR
-from ARDCube.utils.general import get_settings
+import ARDCube.utils.general as utils
 
 import os
 import re
@@ -41,7 +41,7 @@ def create_file_dict(sensor, overwrite):
     {'tileID__date': ['path_to_VV_band', 'path_to_VH_band']}. If bands are not stored separately, which is the case for
     optical data processed with FORCE, the list only contains a single path to the multiband GeoTIFF."""
 
-    settings = get_settings()
+    settings = utils.get_settings()
     level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', sensor)
 
     if sensor == 'sentinel1':

@@ -1,4 +1,4 @@
-name: ARDCube_dev
+name: ardcube
 channels:
   - conda-forge
   - defaults
