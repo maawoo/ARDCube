@@ -5,6 +5,33 @@ import configparser
 from spython.main import Client
 
 
+def init_postgres(debug=False):
+    """Initializes the PostgreSQL Singularity container."""
+
+    ## https://hub.docker.com/r/postgis/postgis
+    ## https://hub.docker.com/_/postgres/
+
+    Client.debug = debug
+    if debug:
+        quiet = False
+    else:
+        quiet = True
+
+    pg_dir = os.path.dirname(POSTGRES_PATH)
+    pg_data = os.path.join(pg_dir, 'postgres_data')
+    pg_run = os.path.join(pg_dir, 'postgres_run')
+
+    output = Client.run(POSTGRES_PATH,
+                        bind=[f"{pg_data}:/var/lib/postgresql/data", f"{pg_run}:/var/run/postgresql"],
+                        quiet=quiet)
+
+    if isinstance(output, list):
+        for line in output:
+            print(line)
+    else:
+        print(output)
+
+
 def start_postgres(debug=False):
     """Starts the PostgreSQL Singularity container."""
 
