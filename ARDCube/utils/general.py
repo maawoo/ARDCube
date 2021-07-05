@@ -2,10 +2,52 @@ from ARDCube.config import ROOT_DIR, PYROSAR_PATH, DEM_TYPES
 
 import configparser
 import os
+import shutil
+import fileinput
 import sys
 from spython.main import Client
 import geopandas as gpd
 import rasterio
+
+
+def setup_project(directory):
+    """Sets up the necessary directory structure and copies files into the 'management' subdirectory."""
+
+    ## Create directory structure
+    dirs_main = {'data': ['level1', 'level2', 'log', 'meta', 'misc', 'temp'],
+                 'management': ['settings', 'singularity']}
+
+    for main_dir, sub_dirs in dirs_main.items():
+        os.mkdir(os.path.join(directory, main_dir))
+        for sub in sub_dirs:
+            os.mkdir(os.path.join(directory, main_dir, sub))
+
+    ## Copy files
+    for sub in dirs_main['management']:
+        _copytree(src=os.path.join(ROOT_DIR, sub),
+                  dst=os.path.join(directory, 'management', sub))
+
+    ## Change 'DataDirectory' parameter in settings.prm
+    prm_path = os.path.join(directory, 'management', 'settings', 'settings.prm')
+    with open(prm_path, 'r') as file:
+        prm_lines = file.readlines()
+        ind = [i for i, item in enumerate(prm_lines) if item.startswith('DataDirectory')]
+
+    prm_lines[ind[0]] = f"DataDirectory = {directory}\n"
+    with open(prm_path, 'w') as file:
+        file.writelines(prm_lines)
+
+
+def _copytree(src, dst, symlinks=False, ignore=None):
+    """Helper function for setup_project(). https://stackoverflow.com/a/12514470"""
+
+    for item in os.listdir(src):
+        s = os.path.join(src, item)
+        d = os.path.join(dst, item)
+        if os.path.isdir(s):
+            shutil.copytree(s, d, symlinks, ignore)
+        else:
+            shutil.copy2(s, d)
 
 
 def get_settings():
