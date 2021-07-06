@@ -1,9 +1,9 @@
 import os
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FORCE_PATH = os.path.join(ROOT_DIR, 'singularity/force', 'force_365.sif')
-PYROSAR_PATH = os.path.join(ROOT_DIR, 'singularity/pyrosar', 'pyrosar_0121.sif')
-POSTGRES_PATH = os.path.join(ROOT_DIR, 'singularity/postgres', 'postgres.sif')
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+FORCE_PATH = os.path.join(ROOT_DIR, 'singularity', 'force', 'force_365.sif')
+PYROSAR_PATH = os.path.join(ROOT_DIR, 'singularity', 'pyrosar', 'pyrosar_0121.sif')
+POSTGRES_PATH = os.path.join(ROOT_DIR, 'singularity', 'postgres', 'postgres.sif')
 
 ## Keys = Supported input for any ARDCube module/function that requires the 'sensor' parameter
 ## Values = Abbreviations used by the force-level1-csd download module as defined here:

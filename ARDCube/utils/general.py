@@ -3,7 +3,6 @@ from ARDCube.config import ROOT_DIR, PYROSAR_PATH, DEM_TYPES
 import configparser
 import os
 import shutil
-import fileinput
 import sys
 from spython.main import Client
 import geopandas as gpd
@@ -11,7 +10,8 @@ import rasterio
 
 
 def setup_project(directory):
-    """Sets up the necessary directory structure and copies files into the 'management' subdirectory."""
+    """Sets up the necessary directory structure and copies files related to parameterization and Singularity into the
+    'management' subdirectory."""
 
     ## Create directory structure
     dirs_main = {'data': ['level1', 'level2', 'log', 'meta', 'misc', 'temp'],

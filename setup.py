@@ -23,6 +23,6 @@ setup(
     license='MIT',
     zip_safe=False,
     entry_points={
-        'console_scripts': ['ardcube=ARDCube.cli:main']
+        'console_scripts': ['ardcube=ARDCube.cli:cli']
     }
 )
