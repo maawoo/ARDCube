@@ -1,13 +1,12 @@
 [GENERAL]
 
 DataDirectory = /home/marco/pypypy/ARDCube_data
-AOI = thuringia.gpkg
-
+AOI = map.geojson
 
 [DOWNLOAD]
 
-TimespanMin = 20170501
-TimespanMax = 20170901
+TimespanMin = 20200501
+TimespanMax = 20200506
 
 ## Optical only
 OpticalCloudCoverRangeMin = 0
@@ -15,14 +14,13 @@ OpticalCloudCoverRangeMax = 75
 
 ## SAR only
 SAROrbitDirection = both
-CopernicusUser =
-CopernicusPassword =
-
+CopernicusUser = username
+CopernicusPassword = password
 
 [PROCESSING]
 
-DEM = LidarDEM_10m_uc_glance.tif 
-DEM_NoData = -9999
+DEM = SRTM 1Sec HGT
+DEM_NoData =
 
 ## Optical only
 NPROC = 1
