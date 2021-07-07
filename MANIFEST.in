@@ -1,1 +1,2 @@
-recursive-include src *
+recursive-include src/settings *.md *.prm *.conf *.yaml *.prj *.py
+recursive-include src/singularity *.md *.def *.varfile
