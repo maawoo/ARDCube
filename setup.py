@@ -16,6 +16,8 @@ setup(
         'Programming Language :: Python'],
     packages=find_packages(),
     include_package_data=True,
+    setup_requires=['setuptools_scm'],
+    use_scm_version=True,
     install_requires=open("requirements.txt").read().splitlines(),
     author="Marco Wolsza",
     author_email="marco.wolsza@uni-jena.de",
