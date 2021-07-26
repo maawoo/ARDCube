@@ -18,9 +18,9 @@ def setup_project(directory):
                  'management': ['settings', 'singularity']}
 
     for main_dir, sub_dirs in dirs_main.items():
-        os.mkdir(os.path.join(directory, main_dir))
+        isdir_mkdir(os.path.join(directory, main_dir))
         for sub in sub_dirs:
-            os.mkdir(os.path.join(directory, main_dir, sub))
+            isdir_mkdir(os.path.join(directory, main_dir, sub))
 
     ## Copy files
     for sub in dirs_main['management']:
@@ -45,9 +45,13 @@ def _copytree(src, dst, symlinks=False, ignore=None):
         s = os.path.join(src, item)
         d = os.path.join(dst, item)
         if os.path.isdir(s):
-            shutil.copytree(s, d, symlinks, ignore)
+            try:
+                shutil.copytree(s, d, symlinks, ignore)
+            except FileExistsError:
+                pass
         else:
-            shutil.copy2(s, d)
+            if not os.path.exists(d):
+                shutil.copy2(s, d)
 
 
 def get_settings():
