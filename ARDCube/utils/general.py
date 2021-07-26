@@ -9,7 +9,7 @@ import geopandas as gpd
 import rasterio
 
 
-def setup_project(directory):
+def setup_project(directory, build_containers=False):
     """Sets up the necessary directory structure and copies files related to parameterization and Singularity into the
     'management' subdirectory."""
 
@@ -36,6 +36,23 @@ def setup_project(directory):
     prm_lines[ind[0]] = f"DataDirectory = {directory}\n"
     with open(prm_path, 'w') as file:
         file.writelines(prm_lines)
+
+    ## Build Singularity containers
+    if build_containers:
+        print('#### Building Singularity containers...')
+        singularity_dir = os.path.join(directory, 'management', 'singularity')
+        cookbook = ['force.def', 'postgres.def']
+
+        for recipe in cookbook:
+            image, out = Client.build(recipe=os.path.join(singularity_dir, 'recipes', recipe),
+                                      image=os.path.join(singularity_dir,
+                                                         f"{os.path.basename(recipe).split('.')[0]}.sif"),
+                                      stream=True)
+
+            for line in out:
+                print(line, end='')
+
+            print(f'Finished building {image}')
 
 
 def _copytree(src, dst, symlinks=False, ignore=None):

@@ -1,5 +1,5 @@
 from ARDCube.config import SAT_DICT
-from ARDCube.utils.general import setup_project
+from ARDCube.utils.general import setup_project, isdir_mkdir
 from ARDCube.download_level1 import download_level1
 from ARDCube.generate_ard import generate_ard
 from ARDCube.prepare_odc import prepare_odc
@@ -18,13 +18,13 @@ def cli():
               help='Path to a (preferably) empty directory that you want to use for your project. The necessary '
                    'directory structure is set up and some files (e.g., for parameterization) are copied over to get '
                    'things started.')
-def setup(path):
-    click.echo('Setting up project directory.')
-
-    if not os.path.isdir(path):
-        os.mkdir(path)
-
-    setup_project(directory=path)
+@click.option('--build', is_flag=True,
+              help="Build all Singularity containers that are provided in the '/singularity/recipe' subdirectory. "
+                   "NOTE: This requires sudo privileges and will ask for your password!")
+def setup(path, build):
+    click.echo('#### Setting up project directory...')
+    isdir_mkdir(path)
+    setup_project(directory=path, build_containers=build)
 
 
 @cli.command()
