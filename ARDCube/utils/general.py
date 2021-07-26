@@ -24,7 +24,7 @@ def setup_project(directory):
 
     ## Copy files
     for sub in dirs_main['management']:
-        _copytree(src=os.path.join(ROOT_DIR, sub),
+        _copytree(src=os.path.join(ROOT_DIR, 'resources', sub),
                   dst=os.path.join(directory, 'management', sub))
 
     ## Change 'DataDirectory' parameter in settings.prm
