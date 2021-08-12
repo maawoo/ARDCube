@@ -3,9 +3,10 @@ From: ubuntu:18.04
 
 
 %files 
-    ## Copy local files that are needed for %post (aka build) section
+    ## Copy local files needed for the %post section.
     ## At a minimum a response.varfile for the SNAP installation should be provided. 
-    ## Install scripts for SNAP 8.0 and the latest Miniconda version can be provided as well. They will be downloaded using wget if not provided. 
+    ## Install scripts for SNAP and Miniconda can be provided as well. If not provided they will automatically be
+    ## downloaded using wget from official resources.
     ./files /
 
 
@@ -40,7 +41,6 @@ From: ubuntu:18.04
 
 
     echo -e "######################### \nInstalling SNAP \n#########################"
-
     ## Helpful resources:
     ## https://github.com/mundialis/esa-snap/tree/ubuntu
     ## https://github.com/ESA-PhiLab/OpenSarToolkit/blob/master/Dockerfile
@@ -59,9 +59,9 @@ From: ubuntu:18.04
         echo "'$SNAP_FILE' exists. "
         bash $SNAP_FILE -q -varfile $INSTALL_DIR/response.varfile
     else
-        echo "The file '$SNAP_FILE' does not exist. Proceed to download from https://step.esa.int/downloads/..."
+        echo "The file '$SNAP_FILE' does not exist. Proceed to download from https://step.esa.int/main/download/snap-download"
         wget -q -O $SNAP_FILE \
-            "https://step.esa.int/downloads/8.0/installers/esa-snap_sentinel_unix_8_0.sh"
+            "https://step.esa.int/downloads-cdn/8.0/installers/esa-snap_sentinel_unix_8_0.sh"
         bash $SNAP_FILE -q -varfile $INSTALL_DIR/response.varfile
     fi
 
@@ -73,7 +73,6 @@ From: ubuntu:18.04
 
 
     echo -e "######################### \nInstalling Conda & pyroSAR \n#########################"
-
     apt-get install -y \
         python3-gdal \
         gdal-bin \
@@ -112,5 +111,5 @@ From: ubuntu:18.04
 
 %environment
     export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64/"
-    export LD_LIBRARY_PATH=".:$LD_LIBRARY_PATH"  # not sure if needed after installation
+    export LD_LIBRARY_PATH=".:$LD_LIBRARY_PATH"
     export PATH="/opt/miniconda3/bin:/opt/snap/bin:$PATH"
