@@ -26,15 +26,8 @@ def setup_project(directory, build_containers=False):
         _copytree(src=os.path.join(ROOT_DIR, 'resources', sub),
                   dst=os.path.join(directory, 'management', sub))
 
-    ## Change 'DataDirectory' parameter in settings.prm
-    prm_path = os.path.join(directory, 'management', 'settings', 'settings.prm')
-    with open(prm_path, 'r') as file:
-        prm_lines = file.readlines()
-        ind = [i for i, item in enumerate(prm_lines) if item.startswith('DataDirectory')]
-
-    prm_lines[ind[0]] = f"DataDirectory = {directory}\n"
-    with open(prm_path, 'w') as file:
-        file.writelines(prm_lines)
+    ## Save 'ProjectDirectory' parameter in settings.prm
+    _save_projdir(project_directory=directory)
 
     ## Build Singularity containers
     if build_containers:
@@ -70,20 +63,23 @@ def _copytree(src, dst, symlinks=False, ignore=None):
                 shutil.copy2(s, d)
 
 
-def get_settings():
-    """Returns the content of 'settings.prm' as a dictionary-like ConfigParser object."""
+def _save_projdir(project_directory):
+    """Save the user selected project directory in the original settings.prm, i.e. located where the ARDCube package was
+    installed, as well as the copied version located in the newly created project directory.
+    The former is done to make sure that the project directory can be accessed during different sessions, while
+    avoiding the creation of a system-wide environmental variable."""
 
-    settings_file = os.path.join(ROOT_DIR, 'settings', 'settings.prm')
+    settings_file_local = os.path.join(ROOT_DIR, 'resources', 'settings', 'settings.prm')
+    settings_proj = os.path.join(project_directory, 'management', 'settings', 'settings.prm')
 
-    if not os.path.isfile(settings_file):
-        raise FileNotFoundError(f"{settings_file} does not exist.")
-
-    settings = configparser.ConfigParser(allow_no_value=True)
-    settings.read(settings_file)
-
-    isdir_mkdir(settings['GENERAL']['DataDirectory'])
-
-    return settings
+    prm_paths = [settings_file_local, settings_proj]
+    for prm in prm_paths:
+        with open(prm, 'r') as file:
+            prm_lines = file.readlines()
+            ind = [i for i, item in enumerate(prm_lines) if item.startswith('ProjectDirectory')]
+        prm_lines[ind[0]] = f"ProjectDirectory = {project_directory}\n"
+        with open(prm, 'w') as file:
+            file.writelines(prm_lines)
 
 
 def get_aoi_path(settings):
