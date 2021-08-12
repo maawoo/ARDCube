@@ -1,4 +1,4 @@
-from ARDCube.config import ROOT_DIR, POSTGRES_PATH
+from ARDCube.config import PROJ_DIR, POSTGRES_PATH
 
 import os
 import configparser
@@ -112,7 +112,7 @@ def odc_index_datasets():
 def _get_port():
     """Helper function for start_postgres() to get the port defined in datacube.conf"""
 
-    datacube_conf_path = os.path.join(ROOT_DIR, 'settings', 'odc', 'datacube.conf')
+    datacube_conf_path = os.path.join(PROJ_DIR, 'management', 'settings', 'odc', 'datacube.conf')
 
     datacube_conf = configparser.ConfigParser(allow_no_value=True)
     datacube_conf.read(datacube_conf_path)

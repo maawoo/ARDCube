@@ -1,5 +1,4 @@
-from ARDCube.config import ROOT_DIR
-import ARDCube.utils.general as utils
+from ARDCube.config import get_settings, PROJ_DIR
 
 import os
 import re
@@ -41,8 +40,9 @@ def create_file_dict(sensor, overwrite):
     {'tileID__date': ['path_to_VV_band', 'path_to_VH_band']}. If bands are not stored separately, which is the case for
     optical data processed with FORCE, the list only contains a single path to the multiband GeoTIFF."""
 
-    settings = utils.get_settings()
-    level2_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level2', sensor)
+    settings = get_settings()
+    data_dir = os.path.join(settings['GENERAL']['ProjectDirectory'], 'data')
+    level2_dir = os.path.join(data_dir, 'level2', sensor)
 
     if sensor == 'sentinel1':
         f_pattern = '**/*.tif'
@@ -50,7 +50,7 @@ def create_file_dict(sensor, overwrite):
         f_pattern = '**/*BOA.tif'
 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    log_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'log')
+    log_dir = os.path.join(data_dir, 'log')
     log_path = os.path.join(log_dir, f'{timestamp}__{sensor}__prepare_odc.log')
 
     file_dict = {}
@@ -200,11 +200,13 @@ def _format_date_string(date, sensor):
 def _read_product_yaml(sensor):
     """Helper function for create_eo3_yaml() to return information from Product Definition YAML."""
 
+    odc_dir = os.path.join(PROJ_DIR, 'management', 'settings', 'odc')
+
     if sensor == 'sentinel1':
-        product_path = [os.path.join(ROOT_DIR, 'settings', 'odc',  f"{sensor}_asc.yaml"),
-                        os.path.join(ROOT_DIR, 'settings', 'odc', f"{sensor}_desc.yaml")]
+        product_path = [os.path.join(odc_dir,  f"{sensor}_asc.yaml"),
+                        os.path.join(odc_dir, f"{sensor}_desc.yaml")]
     else:
-        product_path = [os.path.join(ROOT_DIR, 'settings', 'odc', f"{sensor}.yaml")]
+        product_path = [os.path.join(odc_dir, f"{sensor}.yaml")]
 
     dict_out = {}
     for path in product_path:

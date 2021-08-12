@@ -1,4 +1,4 @@
-from ARDCube.config import FORCE_PATH
+from ARDCube.config import get_settings, FORCE_PATH
 import ARDCube.utils.general as utils
 
 import os
@@ -39,8 +39,8 @@ def download_catalogues(directory):
 def create_kml_grid(directory):
     """Wrapper for 'force-tabulate-grid'."""
 
-    aoi_path = utils.get_aoi_path(settings=utils.get_settings())
-    prj_dir = _get_datacubeprj_dir(directory)
+    aoi_path = utils.get_aoi_path(settings=get_settings())
+    prj_dir = _get_datacubeprj_dir(directory=directory)
 
     ## Get AOI bounds and add a buffer of 1°
     with fiona.open(aoi_path) as f:
@@ -56,7 +56,7 @@ def create_kml_grid(directory):
 def create_mosaics(directory):
     """Wrapper for 'force-mosaic'."""
 
-    prj_dir = _get_datacubeprj_dir(directory)
+    prj_dir = _get_datacubeprj_dir(directory=directory)
 
     Client.execute(FORCE_PATH, ["force-mosaic", prj_dir],
                    options=["--cleanenv"])

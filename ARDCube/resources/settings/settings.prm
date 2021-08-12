@@ -1,6 +1,6 @@
 [GENERAL]
 
-DataDirectory = /home/marco/pypypy/ARDCube_data
+ProjectDirectory = /home/marco/pypypy/ARDCube_test
 AOI = map.geojson
 
 [DOWNLOAD]

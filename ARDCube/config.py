@@ -1,9 +1,34 @@
-import os
+from ARDCube import ROOT_DIR
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-FORCE_PATH = os.path.join(ROOT_DIR, 'singularity', 'force', 'force_365.sif')
-PYROSAR_PATH = os.path.join(ROOT_DIR, 'singularity', 'pyrosar', 'pyrosar_0121.sif')
-POSTGRES_PATH = os.path.join(ROOT_DIR, 'singularity', 'postgres', 'postgres.sif')
+import os
+import configparser
+
+
+def get_settings():
+    """Returns the content of the settings file located in the project directory as a dictionary-like ConfigParser
+    object."""
+
+    ## Get project directory and settings file from local settings file
+    settings_file_local = os.path.join(ROOT_DIR, 'resources', 'settings', 'settings.prm')
+    settings_local = configparser.ConfigParser(allow_no_value=True)
+    settings_local.read(settings_file_local)
+    proj_directory = settings_local['GENERAL']['ProjectDirectory']
+    settings_proj = os.path.join(proj_directory, 'management', 'settings', 'settings.prm')
+
+    if not os.path.isfile(settings_proj):
+        raise FileNotFoundError(f"{settings_proj} does not exist.")
+
+    settings = configparser.ConfigParser(allow_no_value=True)
+    settings.read(settings_proj)
+
+    return settings
+
+
+settings = get_settings()
+PROJ_DIR = settings['GENERAL']['ProjectDirectory']
+FORCE_PATH = os.path.join(PROJ_DIR, 'management', 'singularity', 'force.sif')
+PYROSAR_PATH = os.path.join(PROJ_DIR, 'management', 'singularity', 'pyrosar.sif')
+POSTGRES_PATH = os.path.join(PROJ_DIR, 'management', 'singularity', 'postgres.sif')
 
 ## Keys = Supported input for any ARDCube module/function that requires the 'sensor' parameter
 ## Values = Abbreviations used by the force-level1-csd download module as defined here:

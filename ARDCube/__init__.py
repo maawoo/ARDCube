@@ -1,4 +1,3 @@
-from .download_level1 import download_level1
-from .generate_ard import generate_ard
+import os
 
-from . import download_level1, generate_ard
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))

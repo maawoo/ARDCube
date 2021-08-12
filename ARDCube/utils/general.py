@@ -1,6 +1,6 @@
-from ARDCube.config import ROOT_DIR, PYROSAR_PATH, DEM_TYPES
+from ARDCube import ROOT_DIR
+from ARDCube.config import PROJ_DIR, PYROSAR_PATH, DEM_TYPES
 
-import configparser
 import os
 import shutil
 import sys
@@ -16,7 +16,6 @@ def setup_project(directory, build_containers=False):
     ## Create directory structure
     dirs_main = {'data': ['level1', 'level2', 'log', 'meta', 'misc', 'temp'],
                  'management': ['settings', 'singularity']}
-
     for main_dir, sub_dirs in dirs_main.items():
         isdir_mkdir(os.path.join(directory, main_dir))
         for sub in sub_dirs:
@@ -41,7 +40,7 @@ def setup_project(directory, build_containers=False):
     if build_containers:
         print('#### Building Singularity containers...')
         singularity_dir = os.path.join(directory, 'management', 'singularity')
-        cookbook = ['force.def', 'postgres.def']
+        cookbook = ['force.def', 'postgres.def', 'pyrosar.def']
 
         for recipe in cookbook:
             image, out = Client.build(recipe=os.path.join(singularity_dir, 'recipes', recipe),
@@ -95,9 +94,9 @@ def get_aoi_path(settings):
     if len(aoi_field) == 0:
         raise RuntimeError("Field 'AOI': Input missing!")
 
-    ## Field can be filename (assumed to be located in the directory /{DataDirectory}/misc/aoi ) or full path
+    ## Field can be filename (assumed to be located in the directory /{ProjectDirectory}/data/misc/aoi ) or full path
     if not os.path.isfile(aoi_field):
-        aoi_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'aoi', aoi_field)
+        aoi_path = os.path.join(PROJ_DIR, 'data', 'misc', 'aoi', aoi_field)
     else:
         aoi_path = aoi_field
 
@@ -122,8 +121,8 @@ def get_dem_path(settings):
             dem_path, dem_nodata = create_dem(settings=settings, dem_type=dem_field)
         else:
             ## Input -> Filename of an existing DEM file that is assumed to be located in the directory
-            ## /{DataDirectory}/misc/dem
-            dem_path = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'dem', dem_field)
+            ## /{ProjectDirectory}/data/misc/dem
+            dem_path = os.path.join(PROJ_DIR, 'data', 'misc', 'dem', dem_field)
             dem_nodata = settings['PROCESSING']['DEM_NoData']
     else:
         ## Input -> Path to an existing DEM file that is not located in the directory mentioned above
@@ -139,10 +138,10 @@ def get_dem_path(settings):
 def create_dem(settings, dem_type):
     """Creates a Digital Elevation Model for the AOI using the pyroSAR Singularity container."""
 
-    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'misc', 'dem')
+    out_dir = os.path.join(PROJ_DIR, 'data', 'misc', 'dem')
     isdir_mkdir(out_dir)
 
-    dem_py_path = os.path.join(ROOT_DIR, 'settings', 'pyroSAR', 'dem.py')
+    dem_py_path = os.path.join(PROJ_DIR, 'management', 'settings', 'pyrosar', 'dem.py')
     aoi_path = _aoi_wgs84(aoi_path=get_aoi_path(settings))
     aoi_name = os.path.splitext(os.path.basename(aoi_path))[0]
 

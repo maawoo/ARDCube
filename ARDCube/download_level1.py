@@ -1,4 +1,4 @@
-from ARDCube.config import FORCE_PATH, SAT_DICT
+from ARDCube.config import get_settings, FORCE_PATH, SAT_DICT
 import ARDCube.utils.general as utils
 import ARDCube.utils.force as force
 
@@ -24,7 +24,7 @@ def download_level1(sensor, debug=False):
         Optional parameter to print Singularity debugging information. Only passed to download_optical().
     """
 
-    settings = utils.get_settings()
+    settings = get_settings()
 
     if sensor not in list(SAT_DICT.keys()):
         raise ValueError(f"{sensor} is not supported!\n"
@@ -43,7 +43,7 @@ def download_level1(sensor, debug=False):
 
 def download_sar(query):
     """Download Sentinel-1 GRD data from Copernicus Open Access Hub based on provided query. Data is downloaded to the
-    directory /{DataDirectory}/level1/{sensor} .
+    directory /{ProjectDirectory}/data/level1/{sensor} .
     The package sentinelsat is used here. For any related issues check
     the relevant documentation: https://sentinelsat.readthedocs.io/en/latest/api_overview.html
     or the Github repo: https://github.com/sentinelsat/sentinelsat
@@ -97,7 +97,7 @@ def download_sar(query):
                                    f"The log file is located at: {query['log_dir']}")
             break
         elif answer in ['n', 'no']:
-            print("\n#### Download cancelled...")
+            print("\n#### Download cancelled!")
             break
         else:
             print(f"\n{answer} is not a valid answer!")
@@ -106,7 +106,7 @@ def download_sar(query):
 
 def download_optical(query, debug):
     """Download optical satellite data from Google Cloud Storage based on provided query. Data is downloaded to the
-    directory /{DataDirectory}/level1/{sensor} .
+    directory /{ProjectDirectory}/data/level1/{sensor} .
     The FORCE Singularity container is executed with the module 'force-level1-csd'. For any related issues check the
     relevant documentation: https://force-eo.readthedocs.io/en/latest/howto/level1-csd.html#tut-l1csd
     or the Github repo: https://github.com/davidfrantz/force
@@ -127,7 +127,8 @@ def download_optical(query, debug):
 
     meta_dir = query['meta_dir']
     if not os.path.exists(meta_dir) or len(os.listdir(meta_dir)) == 0:
-        force.download_catalogues(meta_dir)
+        ## TODO: Test if existing catalogues are just updated. If yes this should be executed according to the query.
+        force.download_catalogues(directory=meta_dir)
 
     timespan = f"{query['timespan'][0]},{query['timespan'][1]}"
 
@@ -162,7 +163,7 @@ def download_optical(query, debug):
                 print(line, end='')
             break
         elif answer in ['n', 'no']:
-            print("\n#### Download cancelled...")
+            print("\n#### Download cancelled!")
             break
         else:
             print(f"\n{answer} is not a valid answer!")
@@ -172,9 +173,9 @@ def download_optical(query, debug):
 def _collect_query(settings, sensor):
     """Helper function for download_level1() to collect all necessary information for the download query."""
 
-    out_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
-    utils.isdir_mkdir(out_dir)
-    data_dir = settings['GENERAL']['DataDirectory']
+    data_dir = os.path.join(settings['GENERAL']['ProjectDirectory'], 'data')
+    out_dir = os.path.join(data_dir, 'level1', sensor)
+    utils.isdir_mkdir(directory=out_dir)
     aoi_path = utils.get_aoi_path(settings)
 
     query = {'out_dir': out_dir,
@@ -202,7 +203,7 @@ def _sentinelsat_logging(directory):
     """Helper function for download_sar() to set sentinelsat logging.
     https://sentinelsat.readthedocs.io/en/stable/api.html#logging"""
 
-    utils.isdir_mkdir(directory)
+    utils.isdir_mkdir(directory=directory)
     log_file = os.path.join(directory, f"{datetime.now().strftime('%Y%m%dT%H%M%S__sentinel1__download_level1')}.log")
     logging.basicConfig(filename=log_file, filemode='w', format='%(message)s', level='INFO')
 

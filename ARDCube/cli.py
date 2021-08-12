@@ -4,7 +4,6 @@ from ARDCube.download_level1 import download_level1
 from ARDCube.generate_ard import generate_ard
 from ARDCube.prepare_odc import prepare_odc
 
-import os
 import click
 
 
@@ -15,15 +14,15 @@ def cli():
 
 @cli.command()
 @click.option('-p', '--path', required=True, type=click.Path(writable=True, readable=True),
-              help='Path to a (preferably) empty directory that you want to use for your project. The necessary '
-                   'directory structure is set up and some files (e.g., for parameterization) are copied over to get '
-                   'things started.')
+              help='Path to an empty directory that you want to use for your project. The necessary '
+                   'directory structure is set up automatically and necessary files (e.g., for parameterization) are '
+                   'copied over to get things started.')
 @click.option('--build', is_flag=True,
               help="Build all Singularity containers that are provided in the '/singularity/recipe' subdirectory. "
                    "NOTE: This requires sudo privileges and will ask for your password!")
 def setup(path, build):
     click.echo('#### Setting up project directory...')
-    isdir_mkdir(path)
+    isdir_mkdir(directory=path)
     setup_project(directory=path, build_containers=build)
 
 

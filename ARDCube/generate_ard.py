@@ -1,4 +1,4 @@
-from ARDCube.config import ROOT_DIR, FORCE_PATH, PYROSAR_PATH, SAT_DICT
+from ARDCube.config import get_settings, PROJ_DIR, FORCE_PATH, PYROSAR_PATH, SAT_DICT
 import ARDCube.utils.general as utils
 import ARDCube.utils.force as force
 
@@ -21,7 +21,7 @@ def generate_ard(sensor, debug=False, clean=False):
     ----------
     sensor: string
         Name of the sensor/dataset that Analysis Ready Data should be processed for. It is assumed that a subdirectory
-        containing level-1 data for this sensor already exist in /{DataDirectory}/level1/{sensor} .
+        containing level-1 data for this sensor already exist in /{ProjectDirectory}/data/level1/{sensor} .
         Example: 'landsat8'
     debug: boolean (optional)
         Optional parameter to print Singularity debugging information.
@@ -29,12 +29,12 @@ def generate_ard(sensor, debug=False, clean=False):
         Optional parameter to automatically delete intermediate files. Only passed to process_sar()!
     """
 
-    settings = utils.get_settings()
+    settings = get_settings()
 
     if sensor not in list(SAT_DICT.keys()):
         raise ValueError(f"{sensor} is not supported!")
 
-    level1_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'level1', sensor)
+    level1_dir = os.path.join(settings['GENERAL']['ProjectDirectory'], 'data', 'level1', sensor)
     if not os.path.isdir(level1_dir):
         raise NotADirectoryError(f"{level1_dir} not found. \nDoes level-1 data for {sensor} exist?\n"
                                  f"If not, you can use 'download_level1()' to download some data first! :)")
@@ -63,7 +63,7 @@ def process_sar(settings, debug=False, clean=False):
     Parameters
     ----------
     settings: ConfigParser object
-        A dictionary-like object created by ARDCube.utils.get_settings
+        A dictionary-like object created by ARDCube.config.get_settings
     debug: boolean (optional)
         Optional parameter to print Singularity debugging information.
     clean: boolean (optional)
@@ -78,7 +78,7 @@ def process_sar(settings, debug=False, clean=False):
         quiet = True
 
     p = _collect_params(settings=settings)
-    utils.isdir_mkdir([p['out_dir_tmp'], p['out_dir']])
+    utils.isdir_mkdir(directory=[p['out_dir_tmp'], p['out_dir']])
 
     n_scenes = len(glob.glob1(p['in_dir'], 'S1*zip'))
 
@@ -125,10 +125,10 @@ def process_optical(settings, sensor, debug=False):
     Parameters
     ----------
     settings: ConfigParser object
-        A dictionary-like object created by ARDCube.utils.get_settings
+        A dictionary-like object created by ARDCube.config.get_settings
     sensor: string
         Name of the sensor that Analysis Ready Data should be processed for. It is assumed that a subdirectory
-        containing level-1 data for this sensor already exist in /{DataDirectory}/level1/{sensor} .
+        containing level-1 data for this sensor already exist in /{ProjectDirectory}/data/level1/{sensor} .
         Valid options are defined in SAT_DICT.keys().
         Example: 'landsat8'
     debug: boolean (optional)
@@ -141,8 +141,8 @@ def process_optical(settings, sensor, debug=False):
     else:
         quiet = True
 
-    prm_file, out_dir = _mod_force_template_prm(settings, sensor)
-    check = _check_force_file_queue(prm_file)
+    prm_file, out_dir = _mod_force_template_prm(settings=settings, sensor=sensor)
+    check = _check_force_file_queue(prm_path=prm_file)
 
     if check:
         print("\n#### Start processing...")
@@ -165,12 +165,12 @@ def process_optical(settings, sensor, debug=False):
 
 def _collect_params(settings):
     """Helper function for process_sar() to collect all necessary parameters."""
-
+    data_dir = os.path.join(PROJ_DIR, 'data')
     return {
-        'snap_py': os.path.join(ROOT_DIR, 'ARDCube', 'settings', 'pyrosar', 'snap.py'),
-        'in_dir': os.path.join(settings['GENERAL']['DataDirectory'], 'level1', 'sentinel1'),
-        'out_dir_tmp': os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1_pyrosar'),
-        'out_dir': os.path.join(settings['GENERAL']['DataDirectory'], 'level2', 'sentinel1'),
+        'snap_py': os.path.join(PROJ_DIR, 'management', 'settings', 'pyrosar', 'snap.py'),
+        'in_dir': os.path.join(data_dir, 'level1', 'sentinel1'),
+        'out_dir_tmp': os.path.join(data_dir, 'level2', 'sentinel1_pyrosar'),
+        'out_dir': os.path.join(data_dir, 'level2', 'sentinel1'),
         'aoi_path': utils.get_aoi_path(settings=settings),
         'dem_path': utils.get_dem_path(settings=settings)[0],
         'dem_nodata': utils.get_dem_path(settings=settings)[1],
@@ -186,8 +186,8 @@ def _crop_by_aoi(settings, directory_src, directory_dst, clean):
     """Helper function for process_sar() to crop SAR scenes to the AOI. Sets up a multiprocessing pool and calls the
     helper function _do_crop() with Pool.apply_async()."""
 
-    log_dir = os.path.join(settings['GENERAL']['DataDirectory'], 'log')
-    utils.isdir_mkdir(log_dir)
+    log_dir = os.path.join(settings['GENERAL']['ProjectDirectory'], 'data', 'log')
+    utils.isdir_mkdir(directory=log_dir)
     log_file = os.path.join(log_dir,
                             f"{datetime.now().strftime('%Y%m%dT%H%M%S__sentinel1__generate_ard')}.log")
 
@@ -315,7 +315,7 @@ def _mod_force_template_prm(settings, sensor):
     template, a modified and timestamped copy will be saved."""
 
     ## Get path to default parameter file and get all lines as a list
-    prm_path = os.path.join(ROOT_DIR, 'settings', 'force', 'FORCE_params__template.prm')
+    prm_path = os.path.join(PROJ_DIR, 'management', 'settings', 'force', 'FORCE_params__template.prm')
     if not os.path.isfile(prm_path):
         raise FileNotFoundError(f"{prm_path} could not be found.")
 
@@ -323,7 +323,7 @@ def _mod_force_template_prm(settings, sensor):
         prm_lines = file.readlines()
 
     ## Get all necessary information to fill parameters that are not pre-defined
-    data_dir = settings['GENERAL']['DataDirectory']
+    data_dir = os.path.join(settings['GENERAL']['ProjectDirectory'], 'data')
     file_queue = os.path.join(data_dir, 'level1', sensor, 'queue.txt')
     dir_level2 = os.path.join(data_dir, 'level2', sensor)
     dir_log = os.path.join(data_dir, 'log', sensor)
@@ -354,7 +354,7 @@ def _mod_force_template_prm(settings, sensor):
         prm_lines[i] = f"{p} = {v}\n"
 
     ## Define new output directory and create it if necessary
-    prm_dir_new = os.path.join(ROOT_DIR, 'settings', 'force', 'history')
+    prm_dir_new = os.path.join(PROJ_DIR, 'management', 'settings', 'force', 'history')
     utils.isdir_mkdir(directory=prm_dir_new)
 
     ## Create copy of FORCE_params__template.prm with adjusted parameter fields and return full path

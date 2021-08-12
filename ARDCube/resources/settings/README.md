@@ -19,7 +19,7 @@
 ### `settings.prm`
 
 - **[GENERAL]**
-    - **DataDirectory**  
+    - **ProjectDirectory**  
        Example: `/path/to/your/data/directory`  
        Main directory that will be used for downloaded and processed datasets, metadata, logs, auxillary data 
        (e.g. DEM), etc. Any subdirectories that are necessary for the processing for example, will be created 
@@ -28,7 +28,7 @@
     - **AOI**  
       Example: `my_aoi.geojson` or `/path/to/my_aoi.geojson`  
       Can either be a filename, or a full path to the AOI file. If only a filename is provided, it is assumed to be 
-      located in the subdirectory `/DataDirectory/misc/aoi` (recommended!). In this case you should of course be 
+      located in the subdirectory `/ProjectDirectory/data/misc/aoi` (recommended!). In this case you should of course be 
       proactive in creating this subdirectory and moving your file there. GeoJSON, GPKG and Shapefile should all work.  
       http://geojson.io provides a convenient way to create a GeoJSON file for your AOI.
 
@@ -62,7 +62,7 @@
       Example / Valid options: `my_dem.tif`, `/path/to/my_dem.tif` or `srtm`  
       Sensors: Optical and SAR  
       Can either be a filename, or a full path to the DEM (Digital Elevation Model) file. If only a filename is 
-      provided, it is assumed to be located in the subdirectory `/DataDirectory/misc/dem` (recommended!). 
+      provided, it is assumed to be located in the subdirectory `/ProjectDirectory/data/misc/dem` (recommended!). 
       In this case you should of course be proactive in creating this subdirectory and moving your file there.
       Another valid option is `srtm`. This will automatically create a 1 arc-second (~30m spatial resolution) SRTM DEM 
       for the area of interest and use the recommended subdirectory mentioned above as the output directory.  
